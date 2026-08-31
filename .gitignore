@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist
+build
+*.tsbuildinfo
+
+# Frontend build output (served from apps/be/public)
+apps/be/public/assets
+apps/be/public/index.html
+
+# Environment files
+.env*
+!.env.example
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# IDEs
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SQLite / queue data
+data
+.tmp
+.eslintcache
+.prettiercache
+
+# Docker
+docker-compose.override.yml
+
+# Misc (VS project cruft)
+*.suo
+*.ntvs*
+*.njsproj
+*.sln

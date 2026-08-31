@@ -1,0 +1,6 @@
+# Constructor injection needs the compiler plugin at load time. The compiled
+# binary gets the same records at build time instead - see scripts/build.ts.
+preload = ["@dunx/transform/preload"]
+
+[test]
+preload = ["@dunx/transform/preload"]

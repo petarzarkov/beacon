@@ -1,0 +1,39 @@
+{
+  "name": "dunxon",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Control plane for a fleet of self-updating agents: the panel installs them, they report in, it serves their updates.",
+  "workspaces": [
+    "apps/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "prepare": "husky || true",
+    "dev": "bun run --parallel --filter '*' dev",
+    "dev:agent": "bun run --filter dunxon-agent dev",
+    "start": "bun run --filter dunxon-panel start",
+    "build": "bun run --parallel --filter '*' build",
+    "build:agent": "bun run --filter dunxon-agent build",
+    "typecheck": "bun run --parallel --filter '*' typecheck",
+    "lint": "oxlint --type-aware --fix apps/panel/src apps/agent/src apps/agent/scripts apps/fe/src",
+    "lint:check": "oxlint --type-aware --max-warnings 0 apps/panel/src apps/agent/src apps/agent/scripts apps/fe/src",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "test": "bun run --filter '*' test",
+    "dev:panel": "bun run --filter dunxon-panel dev",
+    "dev:fe": "bun run --filter dunxon-fe dev",
+    "build:fe": "bun run --filter dunxon-fe build"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.2",
+    "oxfmt": "0.64.0",
+    "oxlint": "1.80.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "dunxon-agent",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Single-binary agent that runs on a managed host, reports its state to the panel, and keeps itself current.",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/main.ts run",
+    "build": "bun ./scripts/build.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@dunx/core": "^3.1.3",
+    "@dunx/transform": "^3.1.3",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "typescript": "7.0.2"
+  }
+}

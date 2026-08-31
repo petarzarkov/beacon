@@ -1,0 +1,3 @@
+# Root Bun config for the dunxon monorepo.
+# Per-app test configuration lives in apps/panel/bunfig.toml.
+telemetry = false
