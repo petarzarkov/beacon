@@ -3,6 +3,7 @@ import type { ConfigSource } from '@dunx/core';
 import { LoggerModule, StreamTransport } from '@dunx/infra/logger';
 import { IdentityStore } from './config/identity.js';
 import { AgentConfigService, validate } from './config/settings.js';
+import { DiagnoseService } from './diagnose/diagnose.service.js';
 import { InstallService } from './install/install.service.js';
 import { PanelClient } from './panel/panel-client.js';
 import { ProbeService } from './probe/probe.service.js';
@@ -58,6 +59,7 @@ import { UpdateService } from './update/update.service.js';
     DiscoverService,
     DeployService,
     PropagateService,
+    DiagnoseService,
   ],
 })
 export class AgentModule {

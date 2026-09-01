@@ -10,6 +10,7 @@ import type {
   AgentEventKind,
   CommandState,
   DeployPayload,
+  DiagnosePayload,
   DiscoverPayload,
   HostReport,
 } from '@dunxon/contract';
@@ -81,9 +82,9 @@ export const agentCommands = sqliteTable(
       .references(() => agents.id, { onDelete: 'cascade' }),
     command: text('command').$type<AgentCommandName>().notNull(),
     state: text('state').$type<CommandState>().notNull(),
-    /** `deploy` and `discover` carry one; the rest are the whole instruction. */
+    /** `deploy`, `discover` and `diagnose` carry one; the rest are the whole instruction. */
     payload: text('payload', { mode: 'json' }).$type<
-      DeployPayload | DiscoverPayload
+      DeployPayload | DiscoverPayload | DiagnosePayload
     >(),
     queuedAt: text('queued_at').notNull(),
     /** Past this it is never delivered. An agent dark for a week must not come back to a restart. */

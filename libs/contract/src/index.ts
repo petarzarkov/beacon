@@ -99,9 +99,32 @@ export const AGENT_COMMANDS = [
   'restart',
   'discover',
   'deploy',
+  'diagnose',
 ] as const;
 
 export type AgentCommandName = (typeof AGENT_COMMANDS)[number];
+
+/**
+ * The read-only diagnostics an operator can run on a host, and the whole set -
+ * an allowlist, not an arbitrary shell. A control plane that can restart a
+ * machine should not also be a way to run anything on it; each of these maps to
+ * one fixed, read-only command on the agent, so a stolen console session can
+ * inspect a host but not change it.
+ */
+export const DIAGNOSE_PROBES = [
+  'disk',
+  'memory',
+  'processes',
+  'network',
+  'uptime',
+] as const;
+
+export type DiagnoseProbe = (typeof DIAGNOSE_PROBES)[number];
+
+/** The payload of a `diagnose` command: which read-only probe to run. */
+export interface DiagnosePayload {
+  readonly probe: DiagnoseProbe;
+}
 
 /**
  * ```
@@ -165,7 +188,7 @@ export interface DiscoverPayload {
 export interface CommandEnvelope {
   readonly id: string;
   readonly command: AgentCommandName;
-  readonly payload: DeployPayload | DiscoverPayload | null;
+  readonly payload: DeployPayload | DiscoverPayload | DiagnosePayload | null;
 }
 
 /** The answer to a report: the cadence to keep, and anything queued. */

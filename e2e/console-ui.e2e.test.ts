@@ -91,6 +91,7 @@ describe('the console (browser)', () => {
       // its lifecycle activity (a real startup), and its command history.
       await page.getByText('Agent memory', { exact: true }).waitFor();
       await page.getByText('Trends').waitFor();
+      await page.getByText('Diagnostics').waitFor();
       await page.getByText('Activity').waitFor();
       await page.getByText('startup').waitFor();
       await page.getByText('Command history').waitFor();

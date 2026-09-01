@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { AGENT_COMMANDS, AGENT_EVENT_KINDS } from '@dunxon/contract';
+import {
+  AGENT_COMMANDS,
+  AGENT_EVENT_KINDS,
+  DIAGNOSE_PROBES,
+} from '@dunxon/contract';
 
 /**
  * The route schemas, which are also the OpenAPI document. Everything an agent or
@@ -11,6 +15,9 @@ import { AGENT_COMMANDS, AGENT_EVENT_KINDS } from '@dunxon/contract';
 
 /** Long enough for a probe that grows, short enough that one host cannot flood the panel. */
 const MAX_DETAIL = 500;
+
+/** A diagnostic returns multi-line output, so its outcome detail gets more room. */
+const MAX_OUTPUT = 8_000;
 
 export const hostReport = z
   .object({
@@ -81,7 +88,8 @@ export const reportResponse = z
 export const commandOutcome = z.object({
   id: z.string().min(1).max(64),
   ok: z.boolean(),
-  detail: z.string().max(MAX_DETAIL).optional(),
+  // Room for diagnostic output, which is multi-line; short outcomes use a line.
+  detail: z.string().max(MAX_OUTPUT).optional(),
 });
 
 export const outcomesRequest = z
@@ -211,6 +219,10 @@ export const discoverRoute = {
   }),
 } as const;
 export const deployRoute = { body: deployRequest } as const;
+export const diagnoseRoute = {
+  params: agentId,
+  body: z.object({ probe: z.enum(DIAGNOSE_PROBES) }),
+} as const;
 
 export const fleetSettings = z
   .object({ propagationAllowed: z.boolean() })

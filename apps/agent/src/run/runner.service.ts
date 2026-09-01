@@ -5,10 +5,12 @@ import type {
   CommandEnvelope,
   CommandOutcome,
   DeployPayload,
+  DiagnosePayload,
   DiscoverPayload,
 } from '@dunxon/contract';
 import { IdentityStore } from '../config/identity.js';
 import { AgentConfigService } from '../config/settings.js';
+import { DiagnoseService } from '../diagnose/diagnose.service.js';
 import { PanelClient } from '../panel/panel-client.js';
 import { ProbeService } from '../probe/probe.service.js';
 import { DeployService } from '../provision/deploy.service.js';
@@ -48,6 +50,7 @@ export class RunnerService {
     private readonly discovery: DiscoverService,
     private readonly deployments: DeployService,
     private readonly propagation: PropagateService,
+    private readonly diagnostics: DiagnoseService,
     private readonly logger: Logger,
   ) {}
 
@@ -245,6 +248,12 @@ export class RunnerService {
         if (command.payload === null)
           throw new Error('deploy job has no payload');
         return await this.deployments.deploy(command.payload as DeployPayload);
+      }
+
+      case 'diagnose': {
+        if (command.payload === null)
+          throw new Error('diagnose command has no payload');
+        return this.diagnostics.run((command.payload as DiagnosePayload).probe);
       }
 
       // Handled by the caller, which sends outcomes before the process dies.

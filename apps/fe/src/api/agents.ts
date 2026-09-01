@@ -9,6 +9,7 @@ import type {
   AgentMetricPoint,
   AgentView,
   CommandView,
+  DiagnoseProbe,
   DiscoveryView,
   FleetSettings,
   ReleaseManifest,
@@ -140,6 +141,16 @@ export const useDiscover = () => {
   return useMutation({
     mutationFn: (id: string) =>
       http.post<CommandView>(`/api/agents/${id}/discover`, {}),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.commands }),
+  });
+};
+
+/** Queue a read-only diagnostic. The output arrives as the command's outcome. */
+export const useDiagnose = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, probe }: { id: string; probe: DiagnoseProbe }) =>
+      http.post<CommandView>(`/api/agents/${id}/diagnose`, { probe }),
     onSuccess: () => client.invalidateQueries({ queryKey: keys.commands }),
   });
 };

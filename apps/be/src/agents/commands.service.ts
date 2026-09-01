@@ -7,6 +7,8 @@ import type {
   CommandEnvelope,
   CommandOutcome,
   DeployPayload,
+  DiagnosePayload,
+  DiagnoseProbe,
   DiscoverPayload,
   HostReport,
 } from '@dunxon/contract';
@@ -51,7 +53,7 @@ export class CommandsService {
     agentId: string,
     command: AgentCommandName,
     issuedBy: string | null,
-    payload: DeployPayload | DiscoverPayload | null,
+    payload: DeployPayload | DiscoverPayload | DiagnosePayload | null,
     ttlMs: number = this.#ttlMs(),
   ): CommandView {
     const now = new Date();
@@ -100,6 +102,17 @@ export class CommandsService {
       ...(body.ports === undefined ? {} : { ports: body.ports }),
     };
     return this.#queue(agentId, 'discover', issuedBy, payload);
+  }
+
+  /** Queue a read-only diagnostic. The output rides back as the command's outcome. */
+  queueDiagnose(
+    agentId: string,
+    probe: DiagnoseProbe,
+    issuedBy: string | null,
+  ): CommandView {
+    this.#requireAgent(agentId);
+    const payload: DiagnosePayload = { probe };
+    return this.#queue(agentId, 'diagnose', issuedBy, payload);
   }
 
   /**

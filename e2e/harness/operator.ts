@@ -3,6 +3,7 @@ import type {
   AgentMetricPoint,
   AgentView,
   CommandView,
+  DiagnoseProbe,
   DiscoveryView,
   ReleaseManifest,
 } from '@dunxon/contract';
@@ -129,6 +130,13 @@ export class Operator {
     return this.#json<CommandView>(`/api/agents/${agentId}/discover`, {
       method: 'POST',
       body: JSON.stringify(body),
+    });
+  }
+
+  diagnose(agentId: string, probe: DiagnoseProbe): Promise<CommandView> {
+    return this.#json<CommandView>(`/api/agents/${agentId}/diagnose`, {
+      method: 'POST',
+      body: JSON.stringify({ probe }),
     });
   }
 

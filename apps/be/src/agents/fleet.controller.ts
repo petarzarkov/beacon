@@ -24,6 +24,7 @@ import {
   agentEventsRoute,
   agentMetricsRoute,
   deployRoute,
+  diagnoseRoute,
   discoverRoute,
   listCommandsRoute,
   oneAgentRoute,
@@ -182,6 +183,20 @@ export class FleetController {
     return this.commands.queueDiscover(
       input.params.id,
       input.body,
+      this.#issuer(),
+    );
+  }
+
+  /**
+   * Queue a read-only diagnostic. Its output rides back as the command's outcome
+   * detail, so it appears in the command history like any other intent.
+   */
+  @ApiDoc({ summary: 'Run a read-only diagnostic probe on an agent' })
+  @Post('/:id/diagnose', diagnoseRoute)
+  diagnose(input: Input<typeof diagnoseRoute>): CommandView {
+    return this.commands.queueDiagnose(
+      input.params.id,
+      input.body.probe,
       this.#issuer(),
     );
   }
