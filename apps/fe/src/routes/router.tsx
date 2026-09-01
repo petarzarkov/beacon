@@ -3,6 +3,7 @@ import { AgentDetailPage } from './AgentDetailPage';
 import { AgentsPage } from './AgentsPage';
 import { CommandsPage } from './CommandsPage';
 import { DiscoveredPage } from './DiscoveredPage';
+import { LineagePage } from './LineagePage';
 import { NotFoundPage } from './NotFoundPage';
 import { RootLayout } from './RootLayout';
 import { LoginPage } from './auth/LoginPage';
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
           { path: 'agents/:agentId', Component: AgentDetailPage },
           { path: 'commands', Component: CommandsPage },
           { path: 'discovered', Component: DiscoveredPage },
+          { path: 'lineage', Component: LineagePage },
           { path: '*', Component: NotFoundPage },
         ],
       },

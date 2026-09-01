@@ -37,6 +37,8 @@ export const hostReport = z
     // Nullable and defaulted for the same reason, plus: the first report of a
     // process has no prior sample to rate against.
     agentCpuPercent: z.number().min(0).nullable().default(null),
+    // Defaulted so an agent that predates the field still reports.
+    propagateEnabled: z.boolean().default(false),
     collectedAt: z.iso.datetime(),
   })
   .meta({ id: 'HostReport', description: 'One host, as its agent sees it' });

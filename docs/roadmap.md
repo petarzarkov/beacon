@@ -87,6 +87,11 @@ container is built, for any user; everything else boots the container.
   exit is sent as the process ends rather than held for an interval that never
   comes. The one exit it cannot send is a `restart` it dies executing, so a
   startup with no matching exit is a host that vanished — which the console draws.
+- **Diagnostics** — a `diagnose` command runs one of a fixed allowlist of
+  read-only probes (disk, memory, processes, network, uptime) and returns the
+  output as the command's outcome. An allowlist, not a shell: the console can
+  inspect a host without becoming a way to run anything on it. The report also
+  carries the agent's own memory and CPU and whether it is a spreader.
 - **`install` / `uninstall`** — writes `/usr/local/bin`, the `0600` config, a
   `/var/lib` state dir, an unprivileged service unit and a root update timer, and
   a single-line sudoers rule that lets the service ask the root timer to update.
@@ -118,14 +123,18 @@ path, every screen is a real URL that deep-links and survives a reload.
   flag, memory and load, the outstanding intent per agent (never a tick for the
   button press), and the controls: report / update / restart / discover / forget.
   Each row's host links to that agent's page.
-- **Agent detail** (`/agents/:id`) — one host in full: its state, uptime, memory,
-  address and install lineage, its **lifecycle activity** (startups and exits as
-  a timeline), its own command history, and the same controls.
+- **Agent detail** (`/agents/:id`) — one host in full: its own memory / CPU /
+  uptime (not the machine's), **trend charts** of memory and CPU over a chosen
+  window, a **diagnostics** panel (run a read-only probe, read its output), its
+  **lifecycle activity** (startups and exits as a timeline), its command history,
+  and the controls.
 - **Commands** (`/commands`) — open vs. recent history, each with its state and
   detail.
 - **Discovered** (`/discovered`) — swept hosts not yet managed, with a deployment
   form that takes the credential per install and defaults the callback to this
   origin. The nav badges the count of unmanaged hosts.
+- **Lineage** (`/lineage`) — the fleet as a "who installed whom" install tree,
+  seed agents at the root, spreaders badged.
 
 Built into `apps/be/public` (gitignored, generated), served by the panel at one
 origin, so the session cookie is first-party with no CORS in production.
@@ -143,16 +152,19 @@ An in-process panel on an ephemeral port plus **real agent subprocesses** — th
 only way to test the things that matter: that `restart` really ends the process,
 that a fresh process reports a fresh uptime, that an identity on disk is found
 again by a different process, and that **self-update actually swaps the binary**
-and comes back on the new one. 47 tests across enrolment, the command lifecycle,
+and comes back on the new one. 53 tests across enrolment, the command lifecycle,
 releases, self-update (the real swap, the hash-mismatch refusal, the
 operator-driven queue), **lifecycle events** (a clean stop reports an exit, a kill
-reports none), provisioning, the propagation kill switch, a multi-agent fleet with
-an offline host, and the console — both the panel serving the SPA and **the SPA
-itself driven in a real browser** (Playwright): the live fleet table, an agent's
-detail page opened from its row (with its lifecycle activity), the deep link
-resolving on reload, and a command queued from that page settling as an intent.
-Sign-in is only the way in, not the subject — Better Auth covers auth itself.
-`bun run test:e2e`.
+reports none), **metrics history** (a point per report, oldest-first, real
+memory and CPU), **diagnostics** (a read-only probe runs and returns output, the
+allowlist is enforced), **propagation lineage** (a token-enrolled host is
+attributed to whoever swept its address, and spreaders report themselves),
+provisioning, the propagation kill switch, a multi-agent fleet with an offline
+host, and the console — both the panel serving the SPA and **the SPA itself
+driven in a real browser** (Playwright): the live fleet table, an agent's detail
+page (its trends, diagnostics, activity), the deep link resolving on reload, a
+command settling as an intent, and the lineage tree. Sign-in is only the way in,
+not the subject — Better Auth covers auth itself. `bun run test:e2e`.
 
 The browser tests skip themselves where the console is unbuilt or no Chromium is
 installed (`bunx playwright install chromium`), so a bare checkout stays green; CI
@@ -201,9 +213,11 @@ panel-brokered `deploy` stays the default. The **kill switch is done** (a
 fleet-wide, admin-only pause, on by default). Still to do before it is more than
 opt-in:
 
-- **Panel visibility of the spread** — the console shows the switch and
-  discovered hosts, but not a live "which agent installed which" tree; an
-  operator watching a fleet colonise a segment would want that.
+- **Panel visibility of the spread** — **done**. The console has a Lineage view:
+  a live "who installed whom" tree built from `installedBy`, which the panel now
+  infers for autonomous propagation too (a host is attributed to whichever agent
+  swept and found its address, not only to a panel grant). Spreaders — hosts
+  locally opted in to propagate — report and badge themselves.
 - **Rate and blast-radius limits** — a cap on installs per pass, and a refusal to
   sweep wider than a /24 without an explicit CIDR (already enforced in `discover`).
 - **Real multi-host SSH coverage** — the planner and partitioning are unit-tested
@@ -229,8 +243,9 @@ reporting core is portable as written; what is not is everything host-shaped.
   from Postgres, and the repositories would move off the synchronous handle.
 - **Fleet-wide cadence and grouping** — slow a segment centrally, target a command
   at a group rather than one agent.
-- **Report retention** — today the panel keeps only the last report per agent;
-  trends (memory, load) need a time series.
+- **Report retention** — **done**. The panel keeps a bounded per-agent time
+  series (`agent_metrics`, pruned past `AGENT_METRICS_RETENTION_HOURS`), and the
+  console charts the trend of the agent's own memory and CPU on the detail page.
 - **Multi-node panel** — the report loop is stateless, but the TTL sweep is a
   single-node `@Interval`; at more than one replica it becomes a job that must
   fire once per fleet.

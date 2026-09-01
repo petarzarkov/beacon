@@ -56,6 +56,7 @@ export const toAgentView = (row: AgentRow, ctx: ViewContext): AgentView => ({
   updateAvailable:
     ctx.releaseVersion !== null && ctx.releaseVersion !== row.agentVersion,
   installedBy: row.installedBy ?? null,
+  propagateEnabled: row.lastReport?.propagateEnabled ?? false,
 });
 
 /**

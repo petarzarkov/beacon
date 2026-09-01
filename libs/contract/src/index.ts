@@ -69,6 +69,13 @@ export interface HostReport {
    * against - a rate needs two points, and the first is only the baseline.
    */
   readonly agentCpuPercent: number | null;
+  /**
+   * Whether this host is locally opted in to self-propagation (`AGENT_PROPAGATE`).
+   * One of the two keys spreading needs - the panel knows its own half already;
+   * this is how it learns which hosts carry the other, so the console can show
+   * which agents are spreaders rather than the operator having to guess.
+   */
+  readonly propagateEnabled: boolean;
   readonly collectedAt: string;
 }
 
@@ -317,6 +324,8 @@ export interface AgentView {
    * a "who installed whom" lineage tree across the fleet.
    */
   readonly installedBy: string | null;
+  /** Whether the host is locally opted in to self-propagation. A spreader. */
+  readonly propagateEnabled: boolean;
 }
 
 /** A queued intent and where it got to, never a result. */

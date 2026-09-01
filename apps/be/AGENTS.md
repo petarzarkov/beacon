@@ -37,8 +37,8 @@ should not have a dependency that can take it down.
   - `agent.controller.ts` — `/api/agent/*`, token-checked, `@Public()` (no
     session). Enrol, report, outcomes, events, discovered, release + binary.
   - `fleet.controller.ts` — `/api/agents/*`, `@UseGuards(SessionGuard)`. The
-    console's API: list, one agent + its events, commands, discovered,
-    deployments.
+    console's API: list, one agent + its events + metric history, commands,
+    discovered, deployments, and read-only diagnostics.
   - `agents.service.ts` — enrolment, report ingest, the fleet views.
   - `commands.service.ts` — the command lifecycle and the TTL sweep.
   - `releases.service.ts` — serves the published binary + manifest.

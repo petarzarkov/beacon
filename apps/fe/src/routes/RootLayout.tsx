@@ -11,6 +11,7 @@ import {
   useMantineColorScheme,
 } from '@mantine/core';
 import {
+  IconBinaryTree,
   IconDeviceDesktop,
   IconLogout,
   IconMenu2,
@@ -89,6 +90,12 @@ export const RootLayout = (): React.ReactElement => {
       icon: <IconRadar size={16} />,
       active: pathname.startsWith('/discovered'),
       count: discoveredCount,
+    },
+    {
+      to: '/lineage',
+      label: 'Lineage',
+      icon: <IconBinaryTree size={16} />,
+      active: pathname.startsWith('/lineage'),
     },
   ];
 

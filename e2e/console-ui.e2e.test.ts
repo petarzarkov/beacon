@@ -115,6 +115,11 @@ describe('the console (browser)', () => {
       await page.getByRole('link', { name: 'Fleet' }).click();
       await page.getByRole('heading', { name: 'Agents' }).waitFor();
       expect(new URL(page.url()).pathname).toBe('/agents');
+
+      // The lineage view: the fleet as an install tree, the host at its root.
+      await page.getByRole('button', { name: 'Lineage' }).click();
+      await page.getByRole('heading', { name: 'Lineage' }).waitFor();
+      await page.getByRole('link', { name: hostname() }).waitFor();
     } finally {
       await page.close();
     }

@@ -94,12 +94,13 @@ export class AgentsService implements OnInit {
     const token = mintToken();
     const now = new Date().toISOString();
 
-    // When the credential is a grant, the agent that swept and found this
-    // address is the one that deployed here — record it for the lineage view.
+    // Lineage: whoever swept and found this address is the one that installed
+    // here - true for a panel-brokered grant deploy and for autonomous
+    // propagation alike, since both arrive from an address some agent discovered.
+    // Attributed on any enrolment, not just grants, so the console can see a
+    // fleet that spread itself, not only one deployed a host at a time.
     const installedBy =
-      presented !== null && isGrant(presented) && sourceIp !== null
-        ? this.repo.installerFor(sourceIp)
-        : null;
+      sourceIp === null ? null : this.repo.installerFor(sourceIp);
 
     const row: AgentRow = {
       id: existing?.id ?? crypto.randomUUID(),

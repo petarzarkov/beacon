@@ -55,6 +55,9 @@ export class ProbeService {
       // fleet of agents - the host totals above are the machine, not this process.
       agentMemBytes: process.memoryUsage().rss,
       agentCpuPercent: this.#cpuPercent(),
+      // The host's half of the propagation switch, so the console can show which
+      // agents are spreaders without the operator having to inspect each one.
+      propagateEnabled: this.config.get('propagate').enabled,
       collectedAt: new Date().toISOString(),
     };
   }
