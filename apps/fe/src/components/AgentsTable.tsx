@@ -27,8 +27,8 @@ import {
   type CommandView,
   type QueueableCommand,
 } from '../api/agents';
+import { Link } from 'react-router';
 import { memoryUsed, relativeTime } from '../lib/format';
-import { agentPath, navigate } from '../lib/nav';
 import { CommandBadge } from './CommandBadge';
 
 const CONTROLS: readonly {
@@ -121,14 +121,7 @@ export const AgentsTable = (): React.ReactElement => {
       <Table.Tr key={agent.id}>
         <Table.Td>
           <Stack gap={0}>
-            <Anchor
-              fw={500}
-              href={agentPath(agent.id)}
-              onClick={(event) => {
-                event.preventDefault();
-                navigate(agentPath(agent.id));
-              }}
-            >
+            <Anchor component={Link} to={`/agents/${agent.id}`} fw={500}>
               {agent.hostname}
             </Anchor>
             <Text size="xs" c="dimmed">

@@ -11,26 +11,36 @@ import {
 } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useState, type FormEvent } from 'react';
-import { HttpError } from '../api/http';
-import { useSignIn } from '../api/auth';
+import { Navigate, useNavigate } from 'react-router';
+import { HttpError } from '../../api/http';
+import { useSession, useSignIn } from '../../api/auth';
 
 /**
- * The one page reachable without a session, and the reason `SessionGuard` lets
- * the SPA through ahead of it.
+ * The one page reachable without a session, and the reason `RequireAuth` sits
+ * above the shell rather than inside it.
  *
  * There is no sign-up link, on purpose: an account on this console can restart
- * machines, so operators are created out of band with `bun run create:admin`.
- * A form that let anyone make one would be the same as leaving the fleet
- * unlocked.
+ * machines, so operators are created out of band with `bun run create:admin`. A
+ * form that let anyone make one would be the same as leaving the fleet unlocked.
  */
 export const LoginPage = (): React.ReactElement => {
+  const session = useSession();
   const signIn = useSignIn();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  // Already signed in (or just did, in another tab): skip the form.
+  if (session.data) {
+    return <Navigate to="/agents" replace />;
+  }
+
   const submit = (event: FormEvent): void => {
     event.preventDefault();
-    signIn.mutate({ email, password });
+    signIn.mutate(
+      { email, password },
+      { onSuccess: () => navigate('/agents', { replace: true }) },
+    );
   };
 
   const message =

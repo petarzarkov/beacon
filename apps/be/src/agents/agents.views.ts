@@ -1,9 +1,15 @@
 import type {
   AgentCommandRow,
+  AgentEventRow,
   AgentRow,
   DiscoveredHostRow,
 } from './agents.repository.js';
-import type { AgentView, CommandView, DiscoveryView } from '@dunxon/contract';
+import type {
+  AgentEventView,
+  AgentView,
+  CommandView,
+  DiscoveryView,
+} from '@dunxon/contract';
 
 /**
  * Rows to what the console is shown. Separate from the repository because the
@@ -66,6 +72,15 @@ export const toCommandView = (row: AgentCommandRow): CommandView => ({
   settledAt: row.settledAt,
   detail: row.detail,
   issuedBy: row.issuedBy,
+});
+
+export const toAgentEventView = (row: AgentEventRow): AgentEventView => ({
+  id: row.id,
+  agentId: row.agentId,
+  kind: row.kind,
+  message: row.message,
+  at: row.at,
+  receivedAt: row.receivedAt,
 });
 
 export const toDiscoveryView = (row: DiscoveredHostRow): DiscoveryView => ({

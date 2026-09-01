@@ -22,6 +22,7 @@ import type { AgentRow } from './agents.repository.js';
 import {
   discoveredRoute,
   enrolRoute,
+  eventsRoute,
   outcomesRoute,
   reportRoute,
 } from './agents.schemas.js';
@@ -125,6 +126,19 @@ export class AgentController {
         new Date().toISOString(),
       ),
     };
+  }
+
+  /**
+   * Lifecycle events, sent out of band from the report loop: `startup` once the
+   * agent is up, `exit` best-effort on a clean stop. Separate from a report
+   * because an exit has to be sent as the process is ending, not held for the
+   * next interval that will never come.
+   */
+  @ApiDoc({ summary: 'Report lifecycle events (startup, exit)' })
+  @Post('/events', eventsRoute)
+  events(input: Input<typeof eventsRoute>): { recorded: number } {
+    const agent = this.#agent(input.req);
+    return { recorded: this.agents.recordEvents(agent, input.body.events) };
   }
 
   @ApiDoc({ summary: 'Report hosts found on this agent’s subnet' })

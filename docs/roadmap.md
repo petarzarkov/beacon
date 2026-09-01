@@ -36,6 +36,9 @@ console drives all of it; and everything is covered end to end by real processes
   same row rather than forking history.
 - **The report loop** — `POST /api/agent/report` is the whole control channel:
   the agent asks, and anything queued for it rides back on the answer.
+- **Lifecycle events** — `POST /api/agent/events` records the `startup` and `exit`
+  an agent reports, kept as a per-host log the console shows on the detail page.
+  Separate from the report because an exit has to be sent as the process ends.
 - **The command lifecycle** — `queued → delivered → completed | failed | expired`,
   with a TTL sweep so an agent dark for a week does not come back to a restart
   nobody remembers. `restart` is completed by the panel noticing a process
@@ -79,6 +82,11 @@ container is built, for any user; everything else boots the container.
 - **`run`** — enrol if needed, then report on the panel's cadence and execute what
   comes back. Retries enrolment and reporting forever rather than exiting; an
   unreachable panel is a wait, not a failure.
+- **Lifecycle events** — the agent reports `startup` once it is up and `exit`
+  best-effort on a clean stop (`SIGTERM`), out of band from the report loop so an
+  exit is sent as the process ends rather than held for an interval that never
+  comes. The one exit it cannot send is a `restart` it dies executing, so a
+  startup with no matching exit is a host that vanished — which the console draws.
 - **`install` / `uninstall`** — writes `/usr/local/bin`, the `0600` config, a
   `/var/lib` state dir, an unprivileged service unit and a root update timer, and
   a single-line sudoers rule that lets the service ask the root timer to update.
@@ -99,21 +107,25 @@ container is built, for any user; everything else boots the container.
 
 ### Console (`apps/fe`)
 
-Working end to end. A session gate (`useSession` → login or fleet), then the
-fleet's three tabs and a per-agent detail page — path-based navigation over the
-History API, no router library, so a screen is still a URL: `/agents/:id`
-deep-links and survives a reload (the panel serves the SPA for it).
+Working end to end, on the `landbased-panel` design: an `AppShell` with a header
+of primary nav (a burger menu on narrow screens), the fleet-wide controls,
+a theme toggle and an account menu, over the active page. **react-router** drives
+it — `RequireAuth` (the Better Auth session, no token store) wraps a `RootLayout`
+shell over the child routes, and because the panel serves the SPA for any non-API
+path, every screen is a real URL that deep-links and survives a reload.
 
-- **Agents** — the fleet with derived `connected`, version + update flag, memory
-  and load, the outstanding intent per agent (never a tick for the button press),
-  and the controls: report / update / restart / discover / forget. Each row's host
-  links to that agent's page.
-- **Agent detail** — one host in full: its state, uptime, memory, address and
-  install lineage, its own command history, and the same controls, on a page an
-  operator can link to or reload.
-- **Commands** — open vs. recent history, each with its state and detail.
-- **Discovered** — swept hosts not yet managed, with a deployment form that takes
-  the credential per install and defaults the callback URL to this origin.
+- **Agents** (`/agents`) — the fleet with derived `connected`, version + update
+  flag, memory and load, the outstanding intent per agent (never a tick for the
+  button press), and the controls: report / update / restart / discover / forget.
+  Each row's host links to that agent's page.
+- **Agent detail** (`/agents/:id`) — one host in full: its state, uptime, memory,
+  address and install lineage, its **lifecycle activity** (startups and exits as
+  a timeline), its own command history, and the same controls.
+- **Commands** (`/commands`) — open vs. recent history, each with its state and
+  detail.
+- **Discovered** (`/discovered`) — swept hosts not yet managed, with a deployment
+  form that takes the credential per install and defaults the callback to this
+  origin. The nav badges the count of unmanaged hosts.
 
 Built into `apps/be/public` (gitignored, generated), served by the panel at one
 origin, so the session cookie is first-party with no CORS in production.
@@ -131,14 +143,16 @@ An in-process panel on an ephemeral port plus **real agent subprocesses** — th
 only way to test the things that matter: that `restart` really ends the process,
 that a fresh process reports a fresh uptime, that an identity on disk is found
 again by a different process, and that **self-update actually swaps the binary**
-and comes back on the new one. 45 tests across enrolment, the command lifecycle,
+and comes back on the new one. 47 tests across enrolment, the command lifecycle,
 releases, self-update (the real swap, the hash-mismatch refusal, the
-operator-driven queue), provisioning, the propagation kill switch, a multi-agent
-fleet with an offline host, and the console — both the panel serving the SPA and
-**the SPA itself driven in a real browser** (Playwright): the live fleet table, an
-agent's detail page opened from its row, the deep link resolving on reload, and a
-command queued from that page settling as an intent. Sign-in is only the way in,
-not the subject — Better Auth covers auth itself. `bun run test:e2e`.
+operator-driven queue), **lifecycle events** (a clean stop reports an exit, a kill
+reports none), provisioning, the propagation kill switch, a multi-agent fleet with
+an offline host, and the console — both the panel serving the SPA and **the SPA
+itself driven in a real browser** (Playwright): the live fleet table, an agent's
+detail page opened from its row (with its lifecycle activity), the deep link
+resolving on reload, and a command queued from that page settling as an intent.
+Sign-in is only the way in, not the subject — Better Auth covers auth itself.
+`bun run test:e2e`.
 
 The browser tests skip themselves where the console is unbuilt or no Chromium is
 installed (`bunx playwright install chromium`), so a bare checkout stays green; CI

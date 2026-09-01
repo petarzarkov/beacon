@@ -1,6 +1,7 @@
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import type {
   AgentCommandName,
+  AgentEventKind,
   CommandState,
   DeployPayload,
   DiscoverPayload,
@@ -92,6 +93,28 @@ export const agentCommands = sqliteTable(
 );
 
 /**
+ * A lifecycle event an agent reported - it started, it stopped. Kept as a small
+ * append-only log per host, so the console can show a machine coming and going
+ * rather than leaving an operator to infer it from a gap between reports.
+ */
+export const agentEvents = sqliteTable(
+  'agent_events',
+  {
+    id: text('id').primaryKey(),
+    agentId: text('agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'cascade' }),
+    kind: text('kind').$type<AgentEventKind>().notNull(),
+    message: text('message').notNull(),
+    /** When it happened on the host, as the agent reported it. */
+    at: text('at').notNull(),
+    /** When the panel recorded it; differs from `at` if the agent was offline. */
+    receivedAt: text('received_at').notNull(),
+  },
+  (table) => [index('agent_events_agent').on(table.agentId, table.receivedAt)],
+);
+
+/**
  * A host an agent found on its subnet. Recorded, never acted on: what turns one
  * of these into a managed machine is a human approving a deployment.
  */
@@ -148,6 +171,7 @@ export const usedGrants = sqliteTable('used_grants', {
 
 export type AgentRow = typeof agents.$inferSelect;
 export type AgentCommandRow = typeof agentCommands.$inferSelect;
+export type AgentEventRow = typeof agentEvents.$inferSelect;
 export type DiscoveredHostRow = typeof discoveredHosts.$inferSelect;
 export type FleetSettingRow = typeof fleetSettings.$inferSelect;
 export type UsedGrantRow = typeof usedGrants.$inferSelect;

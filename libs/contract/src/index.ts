@@ -190,6 +190,39 @@ export interface DiscoveredHost {
   readonly hostname?: string | undefined;
 }
 
+/**
+ * The lifecycle moments an agent reports so an operator can see a host come and
+ * go, not only infer it from a gap in reports.
+ *
+ * `startup` is sent once the agent is up and enrolled; `exit` is best-effort on a
+ * clean stop (a `SIGTERM` from `systemctl stop`) - a host that loses power or is
+ * `SIGKILL`ed cannot send one, which is itself the distinction between a graceful
+ * stop and a crash the console can then draw.
+ */
+export const AGENT_EVENT_KINDS = ['startup', 'exit'] as const;
+export type AgentEventKind = (typeof AGENT_EVENT_KINDS)[number];
+
+/** One lifecycle event, as the agent reports it. */
+export interface AgentEventReport {
+  readonly kind: AgentEventKind;
+  /** One line for the console. */
+  readonly message: string;
+  /** When it happened on the host. */
+  readonly at: string;
+}
+
+/** A lifecycle event, as the console sees it. */
+export interface AgentEventView {
+  readonly id: string;
+  readonly agentId: string;
+  readonly kind: AgentEventKind;
+  readonly message: string;
+  /** When it happened on the host, as the agent reported it. */
+  readonly at: string;
+  /** When the panel recorded it - the two differ if the agent was offline. */
+  readonly receivedAt: string;
+}
+
 // --- What the console is shown -----------------------------------------------
 // The panel maps its rows to these before serving them. They are not the storage
 // shape: `tokenHash` never leaves the panel, and `connected` is not a column at

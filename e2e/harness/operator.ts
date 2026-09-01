@@ -1,11 +1,12 @@
 import type {
+  AgentEventView,
   AgentView,
   CommandView,
   DiscoveryView,
   ReleaseManifest,
 } from '@dunxon/contract';
 
-export type { AgentView, CommandView, DiscoveryView };
+export type { AgentEventView, AgentView, CommandView, DiscoveryView };
 
 export interface DeployRequest {
   readonly target: string;
@@ -81,6 +82,12 @@ export class Operator {
 
   agent(id: string): Promise<AgentView> {
     return this.#json<AgentView>(`/api/agents/${id}`);
+  }
+
+  events(id: string, limit = 50): Promise<readonly AgentEventView[]> {
+    return this.#json<readonly AgentEventView[]>(
+      `/api/agents/${id}/events?limit=${limit}`,
+    );
   }
 
   commands(

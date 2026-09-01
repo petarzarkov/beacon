@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AGENT_COMMANDS } from '@dunxon/contract';
+import { AGENT_COMMANDS, AGENT_EVENT_KINDS } from '@dunxon/contract';
 
 /**
  * The route schemas, which are also the OpenAPI document. Everything an agent or
@@ -84,6 +84,19 @@ export const outcomesRequest = z
     description: 'What actually happened, reported after the fact',
   });
 
+export const agentEvent = z.object({
+  kind: z.enum(AGENT_EVENT_KINDS),
+  message: z.string().min(1).max(MAX_DETAIL),
+  at: z.iso.datetime(),
+});
+
+export const eventsRequest = z
+  .object({ events: z.array(agentEvent).min(1).max(50) })
+  .meta({
+    id: 'AgentEvents',
+    description: 'Lifecycle moments an agent reports: it started, it stopped.',
+  });
+
 export const discoveredHost = z.object({
   address: z.ipv4(),
   ports: z.array(z.number().int().min(1).max(65535)).max(32),
@@ -152,10 +165,17 @@ const agentId = z.object({ id: z.string().min(1).max(64) });
 export const enrolRoute = { body: enrolRequest } as const;
 export const reportRoute = { body: hostReport } as const;
 export const outcomesRoute = { body: outcomesRequest } as const;
+export const eventsRoute = { body: eventsRequest } as const;
 export const discoveredRoute = { body: discoveredRequest } as const;
 
 export const listAgentsRoute = {} as const;
 export const oneAgentRoute = { params: agentId } as const;
+export const agentEventsRoute = {
+  params: agentId,
+  query: z.object({
+    limit: z.coerce.number().int().min(1).max(200).default(50),
+  }),
+} as const;
 export const listCommandsRoute = {
   query: z.object({
     state: z.enum(['open', 'recent']).default('open'),

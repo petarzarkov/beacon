@@ -2,6 +2,7 @@ import { Logger } from '@dunx/core';
 import {
   AGENT_HEADER,
   ENROLMENT_HEADER,
+  type AgentEventReport,
   type CommandOutcome,
   type DiscoveredHost,
   type EnrolRequest,
@@ -131,6 +132,19 @@ export class PanelClient {
       method: 'POST',
       headers: this.#authed(),
       body: JSON.stringify({ outcomes }),
+    });
+  }
+
+  /**
+   * Lifecycle events, out of band from the report loop. `startup` rides the
+   * first moments after enrolment; `exit` is sent as the process is ending, so
+   * it cannot wait for a report interval that will not arrive.
+   */
+  events(events: readonly AgentEventReport[]): Promise<{ recorded: number }> {
+    return this.#call<{ recorded: number }>('api/agent/events', {
+      method: 'POST',
+      headers: this.#authed(),
+      body: JSON.stringify({ events }),
     });
   }
 

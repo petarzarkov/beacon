@@ -3,6 +3,7 @@ import { HttpError, HttpStatusCode } from '@dunx/http';
 import { Interval } from '@dunx/infra/schedule';
 import { AppConfigService } from '../config.js';
 import type {
+  AgentEventReport,
   DiscoveredHost,
   EnrolRequest,
   EnrolResponse,
@@ -10,8 +11,16 @@ import type {
   ReportResponse,
 } from '@dunxon/contract';
 import { AgentsRepository, type AgentRow } from './agents.repository.js';
-import type { AgentView, DiscoveryView } from '@dunxon/contract';
-import { toAgentView, toDiscoveryView } from './agents.views.js';
+import type {
+  AgentEventView,
+  AgentView,
+  DiscoveryView,
+} from '@dunxon/contract';
+import {
+  toAgentEventView,
+  toAgentView,
+  toDiscoveryView,
+} from './agents.views.js';
 import { CommandsService } from './commands.service.js';
 import {
   hashToken,
@@ -278,6 +287,38 @@ export class AgentsService implements OnInit {
       hosts: hosts.length,
     });
     return hosts.length;
+  }
+
+  /**
+   * Lifecycle events an agent reported. A restart the agent dies executing has
+   * no exit event; a clean `systemctl stop` does - so a host with a startup and
+   * no matching exit is one that vanished, which is worth being able to see.
+   */
+  recordEvents(agent: AgentRow, events: readonly AgentEventReport[]): number {
+    const receivedAt = new Date().toISOString();
+    this.repo.recordEvents(
+      events.map((event) => ({
+        id: crypto.randomUUID(),
+        agentId: agent.id,
+        kind: event.kind,
+        message: event.message,
+        at: event.at,
+        receivedAt,
+      })),
+    );
+    this.logger.info('agent events recorded', {
+      agentId: agent.id,
+      kinds: events.map((event) => event.kind),
+    });
+    return events.length;
+  }
+
+  /** A host's recent comings and goings, for its detail page. */
+  events(id: string, limit: number): readonly AgentEventView[] {
+    if (this.repo.find(id) === null) {
+      throw new HttpError(HttpStatusCode.NOT_FOUND, `No agent ${id}`);
+    }
+    return this.repo.eventsFor(id, limit).map(toAgentEventView);
   }
 
   list(): readonly AgentView[] {

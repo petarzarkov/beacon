@@ -12,6 +12,7 @@ import {
 } from '@dunx/http';
 import { ApiDoc } from '@dunx/openapi';
 import type {
+  AgentEventView,
   AgentView,
   CommandView,
   DiscoveryView,
@@ -19,6 +20,7 @@ import type {
   ReleaseManifest,
 } from '@dunxon/contract';
 import {
+  agentEventsRoute,
   deployRoute,
   discoverRoute,
   listCommandsRoute,
@@ -135,6 +137,14 @@ export class FleetController {
   @Get('/:id', oneAgentRoute)
   one(input: Input<typeof oneAgentRoute>): AgentView {
     return this.agents.find(input.params.id);
+  }
+
+  @ApiDoc({
+    summary: 'One agent’s lifecycle events (startup, exit), newest first',
+  })
+  @Get('/:id/events', agentEventsRoute)
+  events(input: Input<typeof agentEventsRoute>): readonly AgentEventView[] {
+    return this.agents.events(input.params.id, input.query.limit);
   }
 
   /**

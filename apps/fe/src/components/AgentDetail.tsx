@@ -10,6 +10,7 @@ import {
   Stack,
   Table,
   Text,
+  Timeline,
   Title,
   Tooltip,
 } from '@mantine/core';
@@ -17,21 +18,25 @@ import { notifications } from '@mantine/notifications';
 import {
   IconArrowLeft,
   IconDownload,
+  IconPlayerPlay,
+  IconPlayerStop,
   IconRadar,
   IconRefresh,
   IconReload,
   IconTrash,
 } from '@tabler/icons-react';
+import { Link, useNavigate } from 'react-router';
 import {
   useAgent,
+  useAgentEvents,
   useCommands,
   useDiscover,
   useForgetAgent,
   useQueueCommand,
+  type AgentEventView,
   type QueueableCommand,
 } from '../api/agents';
 import { bytes, duration, memoryUsed, relativeTime } from '../lib/format';
-import { agentPath, fleetPath, navigate } from '../lib/nav';
 import { CommandBadge } from './CommandBadge';
 
 const CONTROLS: readonly {
@@ -60,13 +65,7 @@ const Field = ({
 );
 
 const BackLink = (): React.ReactElement => (
-  <Anchor
-    href={fleetPath}
-    onClick={(event) => {
-      event.preventDefault();
-      navigate(fleetPath);
-    }}
-  >
+  <Anchor component={Link} to="/agents">
     <Group gap={4}>
       <IconArrowLeft size={16} />
       <Text size="sm">Fleet</Text>
@@ -75,8 +74,63 @@ const BackLink = (): React.ReactElement => (
 );
 
 /**
- * One agent in full: everything the row summarises, plus its command history and
- * the same controls, on a page an operator can link to or reload.
+ * The lifecycle log: startups and exits, newest first. A startup with no later
+ * exit is a host that vanished (a crash or lost power) rather than one that
+ * stopped cleanly - the console shows the two differently because the agent can
+ * only ever report the clean one.
+ */
+const Activity = ({ agentId }: { agentId: string }): React.ReactElement => {
+  const events = useAgentEvents(agentId);
+  const rows = events.data ?? [];
+
+  if (rows.length === 0) {
+    return (
+      <Text c="dimmed" size="sm">
+        No startup or exit reported yet.
+      </Text>
+    );
+  }
+
+  const icon = (event: AgentEventView): React.ReactElement =>
+    event.kind === 'startup' ? (
+      <IconPlayerPlay size={12} />
+    ) : (
+      <IconPlayerStop size={12} />
+    );
+
+  return (
+    <Timeline active={-1} bulletSize={22} lineWidth={2}>
+      {rows.map((event) => (
+        <Timeline.Item
+          key={event.id}
+          bullet={icon(event)}
+          color={event.kind === 'startup' ? 'teal' : 'gray'}
+          title={
+            <Group gap="xs">
+              <Badge
+                size="sm"
+                variant="light"
+                color={event.kind === 'startup' ? 'teal' : 'gray'}
+              >
+                {event.kind}
+              </Badge>
+              <Text size="sm">{event.message}</Text>
+            </Group>
+          }
+        >
+          <Text size="xs" c="dimmed">
+            {relativeTime(event.at)}
+          </Text>
+        </Timeline.Item>
+      ))}
+    </Timeline>
+  );
+};
+
+/**
+ * One agent in full: everything the row summarises, plus its lifecycle activity
+ * and command history, and the same controls, on a page an operator can link to
+ * or reload.
  *
  * The controls keep the console's one rule - a command is an intent, never a
  * result - so they notify "queued", not "done". `forget` is the exception that
@@ -88,6 +142,7 @@ export const AgentDetail = ({
 }: {
   agentId: string;
 }): React.ReactElement => {
+  const navigate = useNavigate();
   const agent = useAgent(agentId);
   const history = useCommands('recent');
   const command = useQueueCommand();
@@ -194,7 +249,7 @@ export const AgentDetail = ({
             loading={forget.isPending}
             onClick={() =>
               forget.mutate(agentId, {
-                onSuccess: () => navigate(fleetPath),
+                onSuccess: () => navigate('/agents'),
               })
             }
           >
@@ -224,13 +279,7 @@ export const AgentDetail = ({
             {it.installedBy === null ? (
               'seed / by hand'
             ) : (
-              <Anchor
-                href={agentPath(it.installedBy)}
-                onClick={(event) => {
-                  event.preventDefault();
-                  navigate(agentPath(it.installedBy as string));
-                }}
-              >
+              <Anchor component={Link} to={`/agents/${it.installedBy}`}>
                 {it.installedBy.slice(0, 8)}
               </Anchor>
             )}
@@ -243,53 +292,56 @@ export const AgentDetail = ({
         </SimpleGrid>
       </Paper>
 
-      <Stack gap="xs">
-        <Text fw={500}>Command history</Text>
-        {rows.length === 0 ? (
-          <Text c="dimmed" size="sm">
-            Nothing has been asked of this agent yet.
-          </Text>
-        ) : (
-          <Table.ScrollContainer minWidth={520}>
-            <Table verticalSpacing="sm">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Command</Table.Th>
-                  <Table.Th>Queued</Table.Th>
-                  <Table.Th>Settled</Table.Th>
-                  <Table.Th>By</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {rows.map((entry) => (
-                  <Table.Tr key={entry.id}>
-                    <Table.Td>
-                      <CommandBadge command={entry} />
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" c="dimmed">
-                        {relativeTime(entry.queuedAt)}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" c="dimmed">
-                        {entry.settledAt === null
-                          ? '—'
-                          : relativeTime(entry.settledAt)}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" c="dimmed">
-                        {entry.issuedBy ?? 'system'}
-                      </Text>
-                    </Table.Td>
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+        <Stack gap="xs">
+          <Text fw={500}>Activity</Text>
+          <Paper withBorder radius="md" p="md">
+            <Activity agentId={agentId} />
+          </Paper>
+        </Stack>
+
+        <Stack gap="xs">
+          <Text fw={500}>Command history</Text>
+          {rows.length === 0 ? (
+            <Text c="dimmed" size="sm">
+              Nothing has been asked of this agent yet.
+            </Text>
+          ) : (
+            <Table.ScrollContainer minWidth={420}>
+              <Table verticalSpacing="sm">
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Command</Table.Th>
+                    <Table.Th>Queued</Table.Th>
+                    <Table.Th>Settled</Table.Th>
                   </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-        )}
-      </Stack>
+                </Table.Thead>
+                <Table.Tbody>
+                  {rows.map((entry) => (
+                    <Table.Tr key={entry.id}>
+                      <Table.Td>
+                        <CommandBadge command={entry} />
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm" c="dimmed">
+                          {relativeTime(entry.queuedAt)}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm" c="dimmed">
+                          {entry.settledAt === null
+                            ? '—'
+                            : relativeTime(entry.settledAt)}
+                        </Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          )}
+        </Stack>
+      </SimpleGrid>
     </Stack>
   );
 };

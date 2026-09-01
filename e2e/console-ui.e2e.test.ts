@@ -10,11 +10,10 @@ import { Agent, startPanel, type Panel } from './harness/index.js';
  * The console driven the way an operator drives it: a real browser, the built
  * SPA the panel serves, a real agent reporting in behind it.
  *
- * The focus is the dashboard itself - the fleet table and each agent's detail
- * page - not the sign-in, which is Better Auth's own and tested there. Signing in
- * is only the means to reach the console; what these assert is that the table
- * shows a live agent, that its row opens a detail page that deep-links and
- * reloads, and that a command queued from that page settles as an intent.
+ * The focus is the dashboard itself - the fleet table, the react-router shell,
+ * and each agent's detail page with its lifecycle activity - not the sign-in,
+ * which is Better Auth's own and tested there. Signing in is only the means to
+ * reach the console.
  *
  * Skipped, not failed, where it cannot run: the console has to be built into the
  * panel's public dir (`bun run build:fe`) and a Chromium installed
@@ -46,7 +45,8 @@ describe('the console (browser)', () => {
     // Created out of band, the way `create:admin` makes one - the console has no
     // sign-up, so the browser can only ever sign in to an account that exists.
     await createOperator(panel.app, OPERATOR);
-    // A real agent reporting in, so the fleet table has a live row to act on.
+    // A real agent reporting in, so the fleet table has a live row to act on,
+    // and a real startup event for the detail page's activity.
     agent = await Agent.started(panel);
     browser = await chromium.launch({ headless: true });
   });
@@ -67,15 +67,16 @@ describe('the console (browser)', () => {
     await page.getByLabel('Email').fill(OPERATOR.email);
     await page.getByLabel('Password').fill(OPERATOR.password);
     await page.getByRole('button', { name: 'Sign in' }).click();
-    await page.getByRole('tab', { name: 'Agents' }).waitFor();
+    // The redirect lands on /agents, whose page heading is distinct from the nav.
+    await page.getByRole('heading', { name: 'Agents' }).waitFor();
   };
 
-  it('shows the live agent in the fleet table, opens its detail page, and acts on it', async () => {
+  it('shows the live agent, opens its detail page with activity, and acts on it', async () => {
     const page = await browser.newPage();
     try {
       await signIn(page);
 
-      // The table: the published release, and the live agent as a row.
+      // The shell: the published release in the header, and the live agent row.
       await page.getByText('release 9.9.9').waitFor();
       await page.getByText('connected').waitFor();
       const hostLink = page.getByRole('link', { name: hostname() });
@@ -85,19 +86,21 @@ describe('the console (browser)', () => {
       await hostLink.click();
       await page.getByRole('heading', { name: hostname() }).waitFor();
       expect(page.url()).toContain(`/agents/${agent.agentId}`);
-      // The detail the table cannot show: full state and its own command history.
+
+      // The detail the table cannot show: full state, its lifecycle activity
+      // (the agent reported a startup), and its command history.
       await page.getByText('Host uptime').waitFor();
+      await page.getByText('Activity').waitFor();
+      await page.getByText('startup').waitFor();
       await page.getByText('Command history').waitFor();
 
-      // A deep link, not just an in-app move: reloading the URL resolves back to
-      // this page rather than 404ing or bouncing to the fleet.
+      // A deep link, not just an in-app move: reloading resolves back here.
       await page.reload();
       await page.getByRole('heading', { name: hostname() }).waitFor();
       expect(page.url()).toContain(`/agents/${agent.agentId}`);
 
       // Queue a command from the detail page: honest feedback, then a real
-      // settle in this agent's history - an intent that completed, not a tick for
-      // the button press.
+      // settle in this agent's history.
       await page.getByRole('button', { name: 'Report now' }).click();
       await page
         .getByRole('alert')
@@ -106,10 +109,10 @@ describe('the console (browser)', () => {
         .waitFor();
       await page.getByText('report completed').waitFor();
 
-      // Back to the fleet.
+      // Back to the fleet via the react-router back link.
       await page.getByRole('link', { name: 'Fleet' }).click();
-      await page.getByRole('tab', { name: 'Agents' }).waitFor();
-      expect(new URL(page.url()).pathname).toBe('/');
+      await page.getByRole('heading', { name: 'Agents' }).waitFor();
+      expect(new URL(page.url()).pathname).toBe('/agents');
     } finally {
       await page.close();
     }
@@ -123,7 +126,7 @@ describe('the console (browser)', () => {
       await signIn(page);
       await page.goto(`${origin()}/agents/${agent.agentId}`);
       await page.getByRole('heading', { name: hostname() }).waitFor();
-      await page.getByText('Command history').waitFor();
+      await page.getByText('Activity').waitFor();
     } finally {
       await page.close();
     }

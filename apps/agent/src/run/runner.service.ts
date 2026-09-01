@@ -1,6 +1,7 @@
 import { Logger } from '@dunx/core';
 import { arch, hostname, release } from 'node:os';
 import type {
+  AgentEventKind,
   CommandEnvelope,
   CommandOutcome,
   DeployPayload,
@@ -35,6 +36,8 @@ const MAX_DETAIL = 500;
 export class RunnerService {
   #stopped = false;
   #failures = 0;
+  /** The signal that asked us to stop, for the exit event's message. */
+  #stopSignal: string | null = null;
 
   constructor(
     private readonly config: AgentConfigService,
@@ -68,11 +71,18 @@ export class RunnerService {
     for (const signal of ['SIGTERM', 'SIGINT'] as const) {
       process.on(signal, () => {
         this.logger.info(`received ${signal}, stopping`);
+        this.#stopSignal = signal;
         this.#stopped = true;
       });
     }
 
     await this.#enrol();
+    // Once enrolled the panel is reachable, so the startup event lands now rather
+    // than waiting a report interval. Best-effort: a lost event is not a failure.
+    await this.#reportEvent(
+      'startup',
+      `agent ${this.config.get('version')} started (pid ${process.pid})`,
+    );
     this.#armPropagation();
 
     let intervalMs = this.config.get('reportIntervalMs');
@@ -94,7 +104,28 @@ export class RunnerService {
       await this.#sleep(this.#backoff(intervalMs));
     }
     if (this.#propagateTimer !== null) clearInterval(this.#propagateTimer);
+    // A clean stop is the one exit the agent can announce - it dies executing a
+    // `restart` and cannot. So a startup with no matching exit is a host that
+    // vanished, which is the distinction worth being able to draw in the console.
+    await this.#reportEvent(
+      'exit',
+      `agent stopping${this.#stopSignal === null ? '' : ` (${this.#stopSignal})`}`,
+    );
     this.logger.info('stopped');
+  }
+
+  /** Best-effort lifecycle report. A lost event must never fail the process. */
+  async #reportEvent(kind: AgentEventKind, detail: string): Promise<void> {
+    try {
+      await this.panel.events([
+        { kind, message: detail, at: new Date().toISOString() },
+      ]);
+    } catch (error) {
+      this.logger.warn('could not report lifecycle event', {
+        kind,
+        err: message(error),
+      });
+    }
   }
 
   /**

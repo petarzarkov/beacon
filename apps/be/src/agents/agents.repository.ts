@@ -4,16 +4,18 @@ import * as schema from '../database/schema.js';
 import { SETTLED_STATES, type CommandState } from '@dunxon/contract';
 import {
   agentCommands,
+  agentEvents,
   agents,
   discoveredHosts,
   fleetSettings,
   usedGrants,
   type AgentCommandRow,
+  type AgentEventRow,
   type AgentRow,
   type DiscoveredHostRow,
 } from './agents.schema.js';
 
-export type { AgentCommandRow, AgentRow, DiscoveredHostRow };
+export type { AgentCommandRow, AgentEventRow, AgentRow, DiscoveredHostRow };
 
 /** The states a command can still be delivered or settled from. */
 export const OPEN_STATES = ['queued', 'delivered'] as const;
@@ -70,6 +72,14 @@ export class AgentsRepository {
       detail TEXT,
       issued_by TEXT
     )`);
+    this.db.run(sql`CREATE TABLE IF NOT EXISTS agent_events (
+      id TEXT PRIMARY KEY,
+      agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      message TEXT NOT NULL,
+      at TEXT NOT NULL,
+      received_at TEXT NOT NULL
+    )`);
     this.db.run(sql`CREATE TABLE IF NOT EXISTS discovered_hosts (
       id TEXT PRIMARY KEY,
       found_by TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
@@ -98,6 +108,9 @@ export class AgentsRepository {
     );
     this.db.run(
       sql`CREATE INDEX IF NOT EXISTS discovered_address ON discovered_hosts (address)`,
+    );
+    this.db.run(
+      sql`CREATE INDEX IF NOT EXISTS agent_events_agent ON agent_events (agent_id, received_at)`,
     );
   }
 
@@ -227,6 +240,26 @@ export class AgentsRepository {
       this.db.delete(agents).where(eq(agents.id, id)).returning().all().length >
       0
     );
+  }
+
+  /** Append lifecycle events. Cheap and append-only: a host's log, in order. */
+  recordEvents(rows: readonly AgentEventRow[]): void {
+    if (rows.length === 0) return;
+    this.db
+      .insert(agentEvents)
+      .values([...rows])
+      .run();
+  }
+
+  /** Newest first, for the detail page: a host's recent comings and goings. */
+  eventsFor(agentId: string, limit: number): readonly AgentEventRow[] {
+    return this.db
+      .select()
+      .from(agentEvents)
+      .where(eq(agentEvents.agentId, agentId))
+      .orderBy(desc(agentEvents.receivedAt))
+      .limit(limit)
+      .all();
   }
 
   queue(row: AgentCommandRow): void {

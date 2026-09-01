@@ -5,6 +5,7 @@ import {
   type UseQueryResult,
 } from '@tanstack/react-query';
 import type {
+  AgentEventView,
   AgentView,
   CommandView,
   DiscoveryView,
@@ -15,6 +16,7 @@ import { http } from './http';
 import { keys } from './queryKeys';
 
 export type {
+  AgentEventView,
   AgentView,
   CommandView,
   DiscoveryView,
@@ -63,6 +65,17 @@ export const useAgent = (id: string): UseQueryResult<AgentView> =>
   useQuery({
     queryKey: [...keys.agents, id],
     queryFn: () => http.get<AgentView>(`/api/agents/${id}`),
+    refetchInterval: LIVE_MS,
+  });
+
+/** One agent's lifecycle events (startup, exit), newest first, live. */
+export const useAgentEvents = (
+  id: string,
+): UseQueryResult<readonly AgentEventView[]> =>
+  useQuery({
+    queryKey: [...keys.agents, id, 'events'],
+    queryFn: () =>
+      http.get<readonly AgentEventView[]>(`/api/agents/${id}/events?limit=50`),
     refetchInterval: LIVE_MS,
   });
 
