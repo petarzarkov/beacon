@@ -1,0 +1,30 @@
+# Managed copy - edit the two paths for your host, then `bun run svc:install`.
+#
+# The panel serves the console and the agent releases, so before it starts:
+#   bun install && bun run build   (builds the FE into apps/be/public and the
+#                                   agent into apps/be/data/agent)
+[Unit]
+Description=dunxon panel (fleet control plane + console + release host)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# The user the panel runs as. Not root: it only needs to read its own files and
+# bind a port a reverse proxy sits in front of.
+User=dunxon
+# The repo checkout. `bun run start` must run from here so bunfig.toml's
+# @dunx/transform preload loads - without it every provider fails at boot.
+WorkingDirectory=/opt/dunxon/apps/be
+# Secrets and public config live in a 0600 file, not in this unit.
+EnvironmentFile=/etc/dunxon-panel.env
+ExecStart=/usr/local/bin/bun run start
+Restart=always
+RestartSec=5
+# A crashed panel takes the whole fleet's visibility with it, so bring it back;
+# but a boot loop should not hammer the box.
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Install]
+WantedBy=multi-user.target

@@ -108,6 +108,23 @@ export const discoveredHosts = sqliteTable(
   (table) => [index('discovered_address').on(table.address)],
 );
 
+/**
+ * Fleet-wide settings a live operator can change, as key/value.
+ *
+ * A table rather than config, because the point is a switch that flips without a
+ * restart - `propagation_allowed` is the kill switch, and a config value would
+ * mean redeploying the panel to pause a fleet that is spreading. One row per
+ * setting, so adding another is not a migration.
+ */
+export const fleetSettings = sqliteTable('fleet_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  /** The operator who last changed it, for the audit trail. */
+  updatedBy: text('updated_by'),
+});
+
 export type AgentRow = typeof agents.$inferSelect;
 export type AgentCommandRow = typeof agentCommands.$inferSelect;
 export type DiscoveredHostRow = typeof discoveredHosts.$inferSelect;
+export type FleetSettingRow = typeof fleetSettings.$inferSelect;

@@ -22,6 +22,9 @@ import {
 } from './enrolment.js';
 import { ReleasesService } from './releases.service.js';
 
+/** The one `fleet_settings` key this app uses. */
+const PROPAGATION_KEY = 'propagation_allowed';
+
 /**
  * The panel's side of the agent protocol: who an agent is, and what it just
  * said.
@@ -196,7 +199,34 @@ export class AgentsService implements OnInit {
       agentId: agent.id,
       reportIntervalMs: this.config.get('agents').reportIntervalMs,
       commands: this.commands.collect(agent.id, at.toISOString()),
+      // The kill switch, delivered on every report so a pause reaches the fleet
+      // within one interval rather than on the next agent restart.
+      propagationAllowed: this.propagationAllowed(),
     };
+  }
+
+  /** The fleet-wide propagation switch, defaulting to the config seed until set. */
+  propagationAllowed(): boolean {
+    const stored = this.repo.setting(PROPAGATION_KEY);
+    return stored === null
+      ? this.config.get('agents').propagationAllowedDefault
+      : stored === 'true';
+  }
+
+  /**
+   * Arm or pause fleet-wide propagation, live. Stored, so it survives a restart
+   * and overrides the config seed from then on. Logged loudly - arming autonomous
+   * spread across a fleet is a decision worth a line in the record.
+   */
+  setPropagationAllowed(allowed: boolean, by: string | null): boolean {
+    this.repo.putSetting(
+      PROPAGATION_KEY,
+      String(allowed),
+      new Date().toISOString(),
+      by,
+    );
+    this.logger.warn('fleet propagation switch changed', { allowed, by });
+    return allowed;
   }
 
   /**

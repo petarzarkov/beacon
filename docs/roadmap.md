@@ -7,11 +7,26 @@ The one constraint everything answers to, restated because every item below
 inherits it: **the panel can never dial an agent.** Control is best-effort
 intents an agent collects when it next reports.
 
+## Start here (next session)
+
+Everything below in **Shipped** is done, verified, and pushed to `main`. The
+first things to pick up:
+
+1. **Verify on a real host** — both `dunxon-agent install` (systemd, as root) and
+   the panel deploy (`deploy/`, `svc:install`, behind Caddy with a real domain).
+   Both are written and typecheck; neither has run on a real machine. This is the
+   one gap between "a working first version" and "running in production."
+2. **Deployment credentials** — the interim grant is scoped + expiring but not
+   single-use, and the SSH credential still travels in the deploy job. Decide the
+   end state (see near-term #2).
+3. **Harden propagation** — panel kill switch and the dry-run exist; still missing
+   are rate/blast-radius limits and real multi-host SSH coverage (near-term #3).
+
 ## Shipped
 
 A working first version: an agent enrols, reports, and obeys queued commands; the
-panel serves updates and brokers deployments; both are covered end to end by real
-processes.
+panel serves updates, brokers deployments, and gates fleet-wide propagation; the
+console drives all of it; and everything is covered end to end by real processes.
 
 ### Panel (`apps/be`)
 
@@ -32,11 +47,25 @@ processes.
 - **Delegated deployment** — an operator names a target, the panel picks the agent
   that reported seeing it and signs a deployment grant scoped to that one address
   and a few minutes. The agent installing holds no standing credential.
+- **The propagation kill switch** — a fleet-wide switch (`fleet_settings`, admin
+  only) delivered on every report. Self-propagation needs two keys: a host opting
+  in locally _and_ the panel armed. Paused by default, so it is never on by the
+  panel's silence; pausing it stops the fleet within one report interval.
 - **Auth** — Better Auth sessions guard the console API; agent routes are token-
   checked instead. No public sign-up: `bun run create:admin` is the only way an
-  operator comes to exist, because an account here can restart machines.
+  operator comes to exist, because an account here can restart machines. `APP_URL`
+  + trusted origins are wired for a panel served at a real domain.
 - **Health** — readiness reports whether a release is published and how much of
   the fleet is reporting, both non-critical.
+
+### Public deployment (`deploy/`)
+
+The panel is reachable from anywhere, since agents dial in from anywhere. A
+systemd unit, a production env template, and a Caddy TLS reverse-proxy example,
+plus `svc:*` scripts that build and manage the service. `TRUST_PROXY=true` and
+`APP_URL` are required behind the proxy — the first because a deployment grant is
+bound to the agent's source address, the second because Better Auth checks the
+sign-in origin against it. **Written, not yet run on a real host.**
 
 ### Agent (`apps/agent`)
 
@@ -87,19 +116,26 @@ An in-process panel on an ephemeral port plus **real agent subprocesses** — th
 only way to test the three things that matter: that `restart` really ends the
 process, that a fresh process reports a fresh uptime, and that an identity on disk
 is found again by a different process. 29 tests across enrolment, the command
-lifecycle, releases, provisioning, the console (SPA serving + the auth gate), and
-a multi-agent fleet with an offline host. `bun run test:e2e`. The harness is the
-one place that still boots the backend in-process (`createApp`), which is inherent
-to an in-process suite rather than a cross-import of types.
+lifecycle, releases, provisioning, the console (SPA serving + the auth gate), the
+propagation kill switch, and a multi-agent fleet with an offline host. 33 tests.
+`bun run test:e2e`. The harness is the one place that still boots the backend
+in-process (`createApp`), which is inherent to an in-process suite rather than a
+cross-import of types.
 
 ## Near-term
 
-### 1. Prove `install` on a real host
+### 1. Prove `install` and the panel deploy on a real host
 
-The systemd path is written but has only been typechecked. It needs one run on a
-real Linux host, as root, to confirm: the unit comes up unprivileged, the update
-timer fires as root, the sudoers rule validates under `visudo -c`, and a
-hand-seeded agent enrols. Until then, treat `install` as unverified.
+Both the agent's systemd install and the panel's `deploy/` are written and
+typecheck, but neither has run on a real machine.
+
+- **Agent `install`** (as root): the service comes up unprivileged, the update
+  timer fires as root, the sudoers rule validates under `visudo -c`, and a
+  hand-seeded agent enrols.
+- **Panel deploy**: `svc:install` behind Caddy with a real `APP_URL` and
+  `TRUST_PROXY=true` — sign in from the domain (proves the trusted-origin wiring),
+  and enrol an agent from another host (proves the grant address-binding through
+  the proxy). Until this runs, treat both as unverified.
 
 ### 2. Deployment credentials — the decision worth getting right
 
@@ -123,12 +159,15 @@ settle:
 **standing credential** — a fleet-wide SSH key or password — so a stolen agent
 becomes a way into its neighbours. It is the deliberate trade for a fleet that
 assembles itself from one seeded host, and it is why the credential-free
-panel-brokered `deploy` stays the default. Before it is more than opt-in:
+panel-brokered `deploy` stays the default. The **kill switch is done** (a
+fleet-wide, admin-only pause, on by default). Still to do before it is more than
+opt-in:
 
-- **Panel visibility and a kill switch** — an operator should see a fleet spread
-  and be able to stop it, which today means turning it off host by host.
-- **Rate and blast-radius limits** — a cap per pass, and a refusal to sweep wider
-  than a /24 without an explicit CIDR (already enforced in `discover`).
+- **Panel visibility of the spread** — the console shows the switch and
+  discovered hosts, but not a live "which agent installed which" tree; an
+  operator watching a fleet colonise a segment would want that.
+- **Rate and blast-radius limits** — a cap on installs per pass, and a refusal to
+  sweep wider than a /24 without an explicit CIDR (already enforced in `discover`).
 - **Real multi-host SSH coverage** — the planner and partitioning are unit-tested
   and the dry-run is covered end to end, but the SSH install itself needs a
   container matrix; a single dev host cannot exercise it faithfully.

@@ -70,5 +70,7 @@ export const http = {
   get: <T>(path: string): Promise<T> => request<T>('GET', path),
   post: <T>(path: string, body?: unknown): Promise<T> =>
     request<T>('POST', path, body),
+  put: <T>(path: string, body?: unknown): Promise<T> =>
+    request<T>('PUT', path, body),
   del: <T>(path: string): Promise<T> => request<T>('DELETE', path),
 };

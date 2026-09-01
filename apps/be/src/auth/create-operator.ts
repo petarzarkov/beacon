@@ -11,6 +11,12 @@ export interface NewOperator {
   readonly email: string;
   readonly password: string;
   readonly name?: string;
+  /**
+   * Make them an admin. The default, because both real callers - `create:admin`
+   * and seeding the e2e operator - want one. `false` leaves the account at the
+   * plugin's default role, which is how a test exercises a non-admin path.
+   */
+  readonly admin?: boolean;
 }
 
 export type OperatorResult = 'created' | 'promoted';
@@ -64,10 +70,12 @@ export const createOperator = async (
   // Set directly rather than through the admin plugin's endpoint, which requires
   // an admin caller: at this point there may not be one, which is the whole
   // reason this exists.
-  db.update(schema.user)
-    .set({ role: 'admin' })
-    .where(eq(schema.user.email, operator.email))
-    .run();
+  if (operator.admin !== false) {
+    db.update(schema.user)
+      .set({ role: 'admin' })
+      .where(eq(schema.user.email, operator.email))
+      .run();
+  }
 
   return existing === undefined ? 'created' : 'promoted';
 };

@@ -6,6 +6,7 @@ import {
   agentCommands,
   agents,
   discoveredHosts,
+  fleetSettings,
   type AgentCommandRow,
   type AgentRow,
   type DiscoveredHostRow,
@@ -67,6 +68,12 @@ export class AgentsRepository {
       first_seen_at TEXT NOT NULL,
       last_seen_at TEXT NOT NULL,
       enrolled_agent_id TEXT
+    )`);
+    this.db.run(sql`CREATE TABLE IF NOT EXISTS fleet_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      updated_by TEXT
     )`);
     this.db.run(
       sql`CREATE INDEX IF NOT EXISTS agents_last_seen ON agents (last_seen_at)`,
@@ -344,5 +351,27 @@ export class AgentsRepository {
         .orderBy(desc(discoveredHosts.lastSeenAt))
         .get() ?? null
     );
+  }
+
+  /** `null` when the setting has never been written, which the caller reads as its default. */
+  setting(key: string): string | null {
+    return (
+      this.db
+        .select()
+        .from(fleetSettings)
+        .where(eq(fleetSettings.key, key))
+        .get()?.value ?? null
+    );
+  }
+
+  putSetting(key: string, value: string, at: string, by: string | null): void {
+    this.db
+      .insert(fleetSettings)
+      .values({ key, value, updatedAt: at, updatedBy: by })
+      .onConflictDoUpdate({
+        target: fleetSettings.key,
+        set: { value, updatedAt: at, updatedBy: by },
+      })
+      .run();
   }
 }

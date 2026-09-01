@@ -1,0 +1,13 @@
+# TLS + reverse proxy for a public dunxon panel. Caddy gets a certificate
+# automatically and forwards to the panel, which binds a local port a firewall
+# keeps off the internet.
+#
+#   sudo caddy run --config /etc/caddy/Caddyfile
+#
+# The panel reads the real client address from X-Forwarded-For (Caddy sets it),
+# which is why TRUST_PROXY=true is required - a deployment grant is bound to the
+# agent's source address, and every agent would otherwise look like this proxy.
+panel.example.com {
+	encode zstd gzip
+	reverse_proxy localhost:3000
+}

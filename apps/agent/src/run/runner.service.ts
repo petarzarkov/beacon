@@ -49,6 +49,13 @@ export class RunnerService {
   ) {}
 
   #propagateTimer: ReturnType<typeof setInterval> | null = null;
+  /**
+   * The panel's half of the propagation kill switch, learned from the last
+   * report. Starts paused, so an agent that has not heard from the panel yet - or
+   * one whose panel never arms it - does not spread. Both keys must be true: this
+   * and the local `AGENT_PROPAGATE`.
+   */
+  #panelAllowsPropagation = false;
 
   /** Resolves only when stopped: `run` is the long-lived mode. */
   async start(): Promise<void> {
@@ -100,18 +107,25 @@ export class RunnerService {
    * logged inside and must not become an unhandled rejection.
    */
   #armPropagation(): void {
+    // The local key. Without it there is no timer at all, so a host that never
+    // opted in cannot be made to spread by the panel arming the fleet.
     if (!this.propagation.enabled) return;
     const intervalMs = this.config.get('propagate').intervalMs;
-    this.logger.info('self-propagation armed', { everyMs: intervalMs });
+    this.logger.info('self-propagation enabled locally, waiting on the panel', {
+      everyMs: intervalMs,
+    });
     const pass = (): void => {
+      // The panel's key. Checked on every pass, not once at arm time, so pausing
+      // it in the console stops the next pass rather than needing a restart.
+      if (!this.#panelAllowsPropagation) return;
       void this.propagation
         .propagate()
         .catch((error: unknown) =>
           this.logger.warn('propagation pass failed', { err: message(error) }),
         );
     };
-    // A first pass shortly after start, so a freshly seeded host does not wait a
-    // whole interval before it begins spreading.
+    // A first pass shortly after start, so a freshly seeded host that the panel
+    // already permits does not wait a whole interval before it begins.
     this.#propagateTimer = setInterval(pass, intervalMs);
     setTimeout(pass, 2_000);
   }
@@ -119,6 +133,17 @@ export class RunnerService {
   /** One report, and whatever it comes back with. Returns the cadence to keep. */
   async #tick(): Promise<number> {
     const response = await this.panel.report(this.probe.collect());
+
+    // Learn the panel's propagation switch on every report - before the no-command
+    // early return, since a pause carries no command with it. Log only the change.
+    if (response.propagationAllowed !== this.#panelAllowsPropagation) {
+      this.#panelAllowsPropagation = response.propagationAllowed;
+      if (this.propagation.enabled) {
+        this.logger.info('panel propagation switch', {
+          allowed: response.propagationAllowed,
+        });
+      }
+    }
 
     if (response.commands.length === 0) return response.reportIntervalMs;
     this.logger.info('collected commands', {

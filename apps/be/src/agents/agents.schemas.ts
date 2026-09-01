@@ -64,6 +64,7 @@ export const reportResponse = z
     agentId: z.string(),
     reportIntervalMs: z.number().int(),
     commands: z.array(commandEnvelope),
+    propagationAllowed: z.boolean(),
   })
   .meta({
     id: 'ReportResponse',
@@ -176,3 +177,11 @@ export const discoverRoute = {
   }),
 } as const;
 export const deployRoute = { body: deployRequest } as const;
+
+export const fleetSettings = z
+  .object({ propagationAllowed: z.boolean() })
+  .meta({
+    id: 'FleetSettings',
+    description: 'Fleet-wide switches an operator controls live',
+  });
+export const settingsRoute = { body: fleetSettings } as const;

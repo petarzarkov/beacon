@@ -8,12 +8,19 @@ import type {
   AgentView,
   CommandView,
   DiscoveryView,
+  FleetSettings,
   ReleaseManifest,
 } from '@dunxon/contract';
 import { http } from './http';
 import { keys } from './queryKeys';
 
-export type { AgentView, CommandView, DiscoveryView, ReleaseManifest };
+export type {
+  AgentView,
+  CommandView,
+  DiscoveryView,
+  FleetSettings,
+  ReleaseManifest,
+};
 
 /**
  * The commands an operator can queue bare. `discover` and `deploy` take an
@@ -117,5 +124,27 @@ export const useForgetAgent = () => {
   return useMutation({
     mutationFn: (id: string) => http.del(`/api/agents/${id}`),
     onSuccess: () => client.invalidateQueries({ queryKey: keys.agents }),
+  });
+};
+
+export const useFleetSettings = (): UseQueryResult<FleetSettings> =>
+  useQuery({
+    queryKey: keys.settings,
+    queryFn: () => http.get<FleetSettings>('/api/agents/settings'),
+    refetchInterval: LIVE_MS,
+  });
+
+/**
+ * Arm or pause fleet-wide self-propagation. Admin-only server-side; the console
+ * only shows the control to an admin, but the guard is what enforces it.
+ */
+export const useSetPropagation = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (allowed: boolean) =>
+      http.put<FleetSettings>('/api/agents/settings', {
+        propagationAllowed: allowed,
+      }),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.settings }),
   });
 };

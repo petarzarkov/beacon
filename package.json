@@ -27,7 +27,14 @@
     "build:fe": "bun run --filter dunxon-fe build",
     "create:admin": "bun run --filter dunxon-be create:admin",
     "build:be": "bun run --filter dunxon-be build",
-    "test:e2e": "bun run --filter dunxon-e2e test"
+    "test:e2e": "bun run --filter dunxon-e2e test",
+    "svc:install": "bun run build && sudo cp deploy/dunxon-panel.service /etc/systemd/system/dunxon-panel.service && sudo systemctl daemon-reload && sudo systemctl enable --now dunxon-panel",
+    "svc:restart": "bun run build && sudo systemctl restart dunxon-panel",
+    "svc:start": "sudo systemctl start dunxon-panel",
+    "svc:stop": "sudo systemctl stop dunxon-panel",
+    "svc:status": "systemctl status dunxon-panel --no-pager",
+    "svc:logs": "journalctl -u dunxon-panel -f",
+    "svc:uninstall": "sudo systemctl disable --now dunxon-panel && sudo rm -f /etc/systemd/system/dunxon-panel.service && sudo systemctl daemon-reload"
   },
   "devDependencies": {
     "@types/bun": "1.4.0",

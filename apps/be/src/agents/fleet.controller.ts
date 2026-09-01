@@ -4,6 +4,8 @@ import {
   Delete,
   Get,
   Post,
+  Put,
+  Roles,
   UseGuards,
   type Input,
   type RouteSchemas,
@@ -13,6 +15,7 @@ import type {
   AgentView,
   CommandView,
   DiscoveryView,
+  FleetSettings,
   ReleaseManifest,
 } from '@dunxon/contract';
 import {
@@ -21,6 +24,7 @@ import {
   listCommandsRoute,
   oneAgentRoute,
   queueRoute,
+  settingsRoute,
 } from './agents.schemas.js';
 import { AgentsService } from './agents.service.js';
 import { CommandsService } from './commands.service.js';
@@ -95,6 +99,36 @@ export class FleetController {
   @Get('/release')
   release(): ReleaseManifest | null {
     return this.releases.manifest();
+  }
+
+  /**
+   * The fleet-wide switches an operator controls live. Just the propagation kill
+   * switch today - a static segment, so declared before `/:id`.
+   */
+  @ApiDoc({ summary: 'Fleet-wide settings (the propagation kill switch)' })
+  @Get('/settings')
+  settings(): FleetSettings {
+    return { propagationAllowed: this.agents.propagationAllowed() };
+  }
+
+  /**
+   * Arm or pause autonomous self-propagation across the whole fleet.
+   *
+   * `@Roles('admin')`: this turns a worm-shaped capability on or off for every
+   * host at once, which is not a decision any signed-in user should be able to
+   * make. It is still only one of two keys - a host also has to be locally opted
+   * in - but arming it fleet-wide is the consequential half.
+   */
+  @Roles('admin')
+  @ApiDoc({ summary: 'Arm or pause fleet-wide self-propagation (admin)' })
+  @Put('/settings', settingsRoute)
+  setSettings(input: Input<typeof settingsRoute>): FleetSettings {
+    return {
+      propagationAllowed: this.agents.setPropagationAllowed(
+        input.body.propagationAllowed,
+        this.#issuer(),
+      ),
+    };
   }
 
   @ApiDoc({ summary: 'One agent' })

@@ -16,6 +16,7 @@ import { useSignOut, type Operator } from '../api/auth';
 import { AgentsTable } from './AgentsTable';
 import { CommandsPanel } from './CommandsPanel';
 import { DiscoveredHosts } from './DiscoveredHosts';
+import { PropagationSwitch } from './PropagationSwitch';
 
 const ReleaseBadge = (): React.ReactElement => {
   const release = useRelease();
@@ -82,11 +83,14 @@ export const FleetPage = ({
           <Title order={2}>dunxon</Title>
           <ReleaseBadge />
         </Group>
-        <Group gap="xs">
-          <Text size="sm" c="dimmed">
-            {operator.name}
-          </Text>
-          <Account operator={operator} />
+        <Group gap="md">
+          <PropagationSwitch operator={operator} />
+          <Group gap="xs">
+            <Text size="sm" c="dimmed">
+              {operator.name}
+            </Text>
+            <Account operator={operator} />
+          </Group>
         </Group>
       </Group>
 

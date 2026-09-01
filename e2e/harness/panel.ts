@@ -20,6 +20,8 @@ export interface PanelOptions {
   readonly release?:
     | { readonly version: string; readonly body?: string }
     | false;
+  /** The initial state of the propagation kill switch. Defaults to paused. */
+  readonly propagationAllowed?: boolean;
 }
 
 export interface Panel {
@@ -29,8 +31,10 @@ export interface Panel {
   readonly releaseDir: string;
   /** The published manifest, when `release` was requested. */
   readonly manifest: ReleaseManifest | null;
-  /** A signed-in console client. */
+  /** A signed-in admin console client. */
   operator(): Promise<Operator>;
+  /** A signed-in non-admin operator, for testing role-gated routes. */
+  plainUser(): Promise<Operator>;
   close(): Promise<void>;
 }
 
@@ -72,6 +76,7 @@ export const startPanel = async (
       options.offlineAfterMs ?? DEFAULTS.offlineAfterMs,
     ),
     AGENT_COMMAND_TTL_MS: String(options.commandTtlMs ?? DEFAULTS.commandTtlMs),
+    AGENT_PROPAGATION_ALLOWED: String(options.propagationAllowed ?? false),
     // Distinct per panel, so a grant minted by one is not honoured by another -
     // which is itself asserted in enrolment.e2e.ts.
     AUTH_SECRET: `e2e-secret-${crypto.randomUUID()}`,
@@ -101,6 +106,12 @@ export const startPanel = async (
       const email = `ops-${crypto.randomUUID()}@example.com`;
       const password = 'e2e-operator-password';
       await createOperator(app, { email, password, name: 'E2E Operator' });
+      return Operator.signIn(base, email, password);
+    },
+    async plainUser(): Promise<Operator> {
+      const email = `user-${crypto.randomUUID()}@example.com`;
+      const password = 'e2e-operator-password';
+      await createOperator(app, { email, password, admin: false });
       return Operator.signIn(base, email, password);
     },
     async close(): Promise<void> {

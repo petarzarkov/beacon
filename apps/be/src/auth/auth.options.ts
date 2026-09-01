@@ -4,7 +4,20 @@ import { admin, bearer, openAPI } from 'better-auth/plugins';
 
 export interface AuthOptionsInit {
   readonly secret: string;
+  /**
+   * The panel's own public origin, e.g. `https://panel.example.com`. Better Auth
+   * signs cookies and builds URLs against it, and rejects a sign-in whose Origin
+   * is not this or a trusted one - so a panel reachable at a real domain but told
+   * `localhost` here refuses every browser sign-in as a CSRF attempt.
+   */
   readonly baseURL: string;
+  /**
+   * Extra origins allowed to sign in, beyond `baseURL`. The console is
+   * same-origin with the panel in production, so this is really the dev origin
+   * (`http://localhost:5173`, Vite) plus wherever else an operator's browser
+   * legitimately loads the console from.
+   */
+  readonly trustedOrigins?: readonly string[];
   /** The result of `drizzleDatabase(connection)`. */
   readonly database: BetterAuthOptions['database'];
   /**
@@ -31,6 +44,9 @@ export interface AuthOptionsInit {
 export const authOptions = (init: AuthOptionsInit): BetterAuthOptions => ({
   secret: init.secret,
   baseURL: init.baseURL,
+  ...(init.trustedOrigins && init.trustedOrigins.length > 0
+    ? { trustedOrigins: [...init.trustedOrigins] }
+    : {}),
   // What better-auth matches a pathname against; the global prefix is what makes
   // the mounted `/auth` route answer here.
   basePath: '/api/auth',

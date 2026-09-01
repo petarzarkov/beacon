@@ -163,6 +163,16 @@ export interface ReportResponse {
   /** The panel is authoritative about cadence, so a fleet can be slowed centrally. */
   readonly reportIntervalMs: number;
   readonly commands: readonly CommandEnvelope[];
+  /**
+   * Whether the panel currently permits self-propagation, fleet-wide.
+   *
+   * The kill switch, and it is one of two keys: an agent spreads only when it is
+   * locally opted in (`AGENT_PROPAGATE`) **and** this is true. Delivered on every
+   * report rather than stored, so an operator pausing it in the console stops the
+   * fleet within one interval without touching a host. Defaults to paused, so
+   * propagation is never on by the panel's silence alone.
+   */
+  readonly propagationAllowed: boolean;
 }
 
 /** What the agent sends back once a command has actually run. */
@@ -230,4 +240,10 @@ export interface DiscoveryView {
   readonly foundBy: string;
   readonly lastSeenAt: string;
   readonly enrolledAgentId: string | null;
+}
+
+/** Fleet-wide switches an operator controls live from the console. */
+export interface FleetSettings {
+  /** The panel's half of the propagation kill switch. See `ReportResponse`. */
+  readonly propagationAllowed: boolean;
 }

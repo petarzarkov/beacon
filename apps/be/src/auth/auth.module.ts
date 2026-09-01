@@ -23,7 +23,14 @@ import { ProfileController } from './profile.controller.js';
         useFactory: (config: AppConfigService, connection: DbConnection) =>
           authOptions({
             secret: config.get('auth.secret'),
-            baseURL: `http://localhost:${config.get('port')}`,
+            // The public origin, so cookies and the CSRF origin check are right
+            // when the panel is reachable at a real domain rather than localhost.
+            baseURL: config.get('appUrl'),
+            // The console is same-origin in production; this covers the dev origin
+            // (Vite on 5173) and any other origin an operator loads it from.
+            trustedOrigins: Array.from(
+              new Set([config.get('appUrl'), config.get('corsOrigin')]),
+            ),
             database: drizzleDatabase(connection),
             // Closed. `bun run create:admin` is how an operator exists.
             openSignUp: false,

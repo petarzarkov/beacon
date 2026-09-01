@@ -21,6 +21,16 @@ const envSchema = z.object({
   /** The console in development. In production it is served from this same origin. */
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   /**
+   * The panel's own public origin — where operators reach the console and where
+   * agents dial in. `https://panel.example.com` in production.
+   *
+   * Load bearing once the panel is public: Better Auth signs cookies against it
+   * and refuses a sign-in from an untrusted origin, so a panel served at a real
+   * domain but left on `localhost` here rejects every browser sign-in. Unset
+   * means `http://localhost:PORT`, which is right only for local use.
+   */
+  APP_URL: z.string().optional(),
+  /**
    * Whether `x-forwarded-for` is believed. Off unless a trusted proxy is in
    * front: with nothing stripping the header, any caller picks its own
    * address, which fakes both rate limiting and the logged client address.
@@ -68,6 +78,14 @@ const envSchema = z.object({
    * a week must not come back to a restart nobody remembers asking for.
    */
   AGENT_COMMAND_TTL_MS: z.coerce.number().int().min(10_000).default(3_600_000),
+  /**
+   * The initial state of the fleet-wide propagation kill switch, before an
+   * operator touches it. **Paused by default**, so autonomous self-spread is
+   * never on by the panel's silence alone - it takes both a host opting in and
+   * the panel being armed. Once set live in the console the stored value wins;
+   * this only seeds the first boot.
+   */
+  AGENT_PROPAGATION_ALLOWED: z.stringbool().default(false),
 });
 
 export interface AppConfig {
@@ -80,6 +98,8 @@ export interface AppConfig {
     readonly responseBody: boolean;
   };
   readonly corsOrigin: string;
+  /** The panel's public origin. Falls back to `http://localhost:PORT`. */
+  readonly appUrl: string;
   readonly trustProxy: boolean;
   readonly database: { readonly file: string };
   readonly auth: { readonly secret: string };
@@ -90,6 +110,7 @@ export interface AppConfig {
     readonly reportIntervalMs: number;
     readonly offlineAfterMs: number;
     readonly commandTtlMs: number;
+    readonly propagationAllowedDefault: boolean;
   };
 }
 
@@ -122,6 +143,9 @@ export const validate = (env: ConfigSource): AppConfig => {
       responseBody: value.LOG_RESPONSE_BODY,
     },
     corsOrigin: value.CORS_ORIGIN,
+    // The public origin, or a local default derived from the port so a clean
+    // checkout still boots and signs in.
+    appUrl: value.APP_URL ?? `http://localhost:${value.PORT}`,
     trustProxy: value.TRUST_PROXY,
     database: { file: value.DATABASE_FILE },
     auth: { secret: value.AUTH_SECRET },
@@ -135,6 +159,7 @@ export const validate = (env: ConfigSource): AppConfig => {
       offlineAfterMs:
         value.AGENT_OFFLINE_AFTER_MS ?? value.AGENT_REPORT_INTERVAL_MS * 3,
       commandTtlMs: value.AGENT_COMMAND_TTL_MS,
+      propagationAllowedDefault: value.AGENT_PROPAGATION_ALLOWED,
     },
   };
 };

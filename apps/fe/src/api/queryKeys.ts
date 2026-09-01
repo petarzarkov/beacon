@@ -9,4 +9,5 @@ export const keys = {
   commands: ['commands'] as const,
   discovered: ['discovered'] as const,
   release: ['release'] as const,
+  settings: ['settings'] as const,
 };
