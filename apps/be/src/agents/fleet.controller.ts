@@ -13,6 +13,7 @@ import {
 import { ApiDoc } from '@dunx/openapi';
 import type {
   AgentEventView,
+  AgentMetricPoint,
   AgentView,
   CommandView,
   DiscoveryView,
@@ -21,6 +22,7 @@ import type {
 } from '@dunxon/contract';
 import {
   agentEventsRoute,
+  agentMetricsRoute,
   deployRoute,
   discoverRoute,
   listCommandsRoute,
@@ -145,6 +147,14 @@ export class FleetController {
   @Get('/:id/events', agentEventsRoute)
   events(input: Input<typeof agentEventsRoute>): readonly AgentEventView[] {
     return this.agents.events(input.params.id, input.query.limit);
+  }
+
+  @ApiDoc({
+    summary: 'One agent’s metric history (memory, CPU, load), oldest first',
+  })
+  @Get('/:id/metrics', agentMetricsRoute)
+  metrics(input: Input<typeof agentMetricsRoute>): readonly AgentMetricPoint[] {
+    return this.agents.metrics(input.params.id, input.query.minutes);
   }
 
   /**

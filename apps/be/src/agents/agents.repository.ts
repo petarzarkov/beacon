@@ -1,21 +1,29 @@
 import { SyncDatabase } from '@dunx/infra/db';
-import { and, count, desc, eq, inArray, lt, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 import * as schema from '../database/schema.js';
 import { SETTLED_STATES, type CommandState } from '@dunxon/contract';
 import {
   agentCommands,
   agentEvents,
+  agentMetrics,
   agents,
   discoveredHosts,
   fleetSettings,
   usedGrants,
   type AgentCommandRow,
   type AgentEventRow,
+  type AgentMetricRow,
   type AgentRow,
   type DiscoveredHostRow,
 } from './agents.schema.js';
 
-export type { AgentCommandRow, AgentEventRow, AgentRow, DiscoveredHostRow };
+export type {
+  AgentCommandRow,
+  AgentEventRow,
+  AgentMetricRow,
+  AgentRow,
+  DiscoveredHostRow,
+};
 
 /** The states a command can still be delivered or settled from. */
 export const OPEN_STATES = ['queued', 'delivered'] as const;
@@ -80,6 +88,14 @@ export class AgentsRepository {
       at TEXT NOT NULL,
       received_at TEXT NOT NULL
     )`);
+    this.db.run(sql`CREATE TABLE IF NOT EXISTS agent_metrics (
+      id TEXT PRIMARY KEY,
+      agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+      at TEXT NOT NULL,
+      mem_bytes INTEGER NOT NULL,
+      cpu_percent REAL,
+      load1 REAL NOT NULL
+    )`);
     this.db.run(sql`CREATE TABLE IF NOT EXISTS discovered_hosts (
       id TEXT PRIMARY KEY,
       found_by TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
@@ -111,6 +127,9 @@ export class AgentsRepository {
     );
     this.db.run(
       sql`CREATE INDEX IF NOT EXISTS agent_events_agent ON agent_events (agent_id, received_at)`,
+    );
+    this.db.run(
+      sql`CREATE INDEX IF NOT EXISTS agent_metrics_agent_at ON agent_metrics (agent_id, at)`,
     );
   }
 
@@ -260,6 +279,32 @@ export class AgentsRepository {
       .orderBy(desc(agentEvents.receivedAt))
       .limit(limit)
       .all();
+  }
+
+  /** One sample of an agent's metrics, appended per report. */
+  recordMetric(row: AgentMetricRow): void {
+    this.db.insert(agentMetrics).values(row).run();
+  }
+
+  /** A window of an agent's history, oldest first, so a chart reads left to right. */
+  metricsSince(agentId: string, sinceIso: string): readonly AgentMetricRow[] {
+    return this.db
+      .select()
+      .from(agentMetrics)
+      .where(
+        and(eq(agentMetrics.agentId, agentId), gte(agentMetrics.at, sinceIso)),
+      )
+      .orderBy(agentMetrics.at)
+      .all();
+  }
+
+  /** Drops samples past the retention window. Returns how many went. */
+  pruneMetrics(beforeIso: string): number {
+    return this.db
+      .delete(agentMetrics)
+      .where(lt(agentMetrics.at, beforeIso))
+      .returning()
+      .all().length;
   }
 
   queue(row: AgentCommandRow): void {

@@ -223,6 +223,24 @@ export interface AgentEventReport {
   readonly at: string;
 }
 
+/**
+ * One point in an agent's metric history.
+ *
+ * The panel keeps a bounded time series of these per agent - the last report is
+ * a snapshot, and a snapshot cannot show a leak building or a load spike. The
+ * numbers are the agent's own (memory, CPU), plus host load for context.
+ */
+export interface AgentMetricPoint {
+  /** When the sample was collected on the host. */
+  readonly at: string;
+  /** The agent process's resident memory (RSS) at that point. */
+  readonly memBytes: number;
+  /** The agent process's CPU, percent of one core. Null when it had no baseline. */
+  readonly cpuPercent: number | null;
+  /** The host's 1-minute load, for context around the agent's own numbers. */
+  readonly load1: number;
+}
+
 /** A lifecycle event, as the console sees it. */
 export interface AgentEventView {
   readonly id: string;

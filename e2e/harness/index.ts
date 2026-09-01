@@ -2,6 +2,7 @@ export { Agent, disposeFleet, startFleet, waitFor } from './agent.js';
 export { Operator } from './operator.js';
 export type {
   AgentEventView,
+  AgentMetricPoint,
   AgentView,
   CommandView,
   DiscoveryView,

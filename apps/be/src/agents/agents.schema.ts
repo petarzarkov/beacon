@@ -1,4 +1,10 @@
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import {
+  index,
+  integer,
+  real,
+  sqliteTable,
+  text,
+} from 'drizzle-orm/sqlite-core';
 import type {
   AgentCommandName,
   AgentEventKind,
@@ -115,6 +121,30 @@ export const agentEvents = sqliteTable(
 );
 
 /**
+ * A bounded time series of an agent's metrics - one row per report, pruned past
+ * a retention window. The last report answers "what is it now"; this answers
+ * "what has it been doing", which is where a slow leak or a load spike shows.
+ */
+export const agentMetrics = sqliteTable(
+  'agent_metrics',
+  {
+    id: text('id').primaryKey(),
+    agentId: text('agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'cascade' }),
+    /** When the sample was collected on the host. */
+    at: text('at').notNull(),
+    /** The agent process's resident memory (RSS). */
+    memBytes: integer('mem_bytes').notNull(),
+    /** The agent process's CPU, percent of one core. Null with no baseline. */
+    cpuPercent: real('cpu_percent'),
+    /** The host's 1-minute load, kept for context. */
+    load1: real('load1').notNull(),
+  },
+  (table) => [index('agent_metrics_agent_at').on(table.agentId, table.at)],
+);
+
+/**
  * A host an agent found on its subnet. Recorded, never acted on: what turns one
  * of these into a managed machine is a human approving a deployment.
  */
@@ -172,6 +202,7 @@ export const usedGrants = sqliteTable('used_grants', {
 export type AgentRow = typeof agents.$inferSelect;
 export type AgentCommandRow = typeof agentCommands.$inferSelect;
 export type AgentEventRow = typeof agentEvents.$inferSelect;
+export type AgentMetricRow = typeof agentMetrics.$inferSelect;
 export type DiscoveredHostRow = typeof discoveredHosts.$inferSelect;
 export type FleetSettingRow = typeof fleetSettings.$inferSelect;
 export type UsedGrantRow = typeof usedGrants.$inferSelect;

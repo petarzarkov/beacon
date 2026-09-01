@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query';
 import type {
   AgentEventView,
+  AgentMetricPoint,
   AgentView,
   CommandView,
   DiscoveryView,
@@ -17,6 +18,7 @@ import { keys } from './queryKeys';
 
 export type {
   AgentEventView,
+  AgentMetricPoint,
   AgentView,
   CommandView,
   DiscoveryView,
@@ -76,6 +78,20 @@ export const useAgentEvents = (
     queryKey: [...keys.agents, id, 'events'],
     queryFn: () =>
       http.get<readonly AgentEventView[]>(`/api/agents/${id}/events?limit=50`),
+    refetchInterval: LIVE_MS,
+  });
+
+/** One agent's metric history over the last `minutes`, oldest first, live. */
+export const useAgentMetrics = (
+  id: string,
+  minutes: number,
+): UseQueryResult<readonly AgentMetricPoint[]> =>
+  useQuery({
+    queryKey: [...keys.agents, id, 'metrics', minutes],
+    queryFn: () =>
+      http.get<readonly AgentMetricPoint[]>(
+        `/api/agents/${id}/metrics?minutes=${minutes}`,
+      ),
     refetchInterval: LIVE_MS,
   });
 

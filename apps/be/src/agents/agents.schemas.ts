@@ -183,6 +183,13 @@ export const agentEventsRoute = {
     limit: z.coerce.number().int().min(1).max(200).default(50),
   }),
 } as const;
+export const agentMetricsRoute = {
+  params: agentId,
+  query: z.object({
+    // Minutes of history to return. A day at most - the retention window caps it.
+    minutes: z.coerce.number().int().min(1).max(1440).default(60),
+  }),
+} as const;
 export const listCommandsRoute = {
   query: z.object({
     state: z.enum(['open', 'recent']).default('open'),

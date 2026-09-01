@@ -37,6 +37,7 @@ import {
   type QueueableCommand,
 } from '../api/agents';
 import { bytes, duration, relativeTime } from '../lib/format';
+import { AgentTrends } from './AgentTrends';
 import { CommandBadge } from './CommandBadge';
 
 const CONTROLS: readonly {
@@ -289,6 +290,10 @@ export const AgentDetail = ({
             </Text>
           </Field>
         </SimpleGrid>
+      </Paper>
+
+      <Paper withBorder radius="md" p="md">
+        <AgentTrends agentId={agentId} />
       </Paper>
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">

@@ -13,6 +13,7 @@ import type {
 import { AgentsRepository, type AgentRow } from './agents.repository.js';
 import type {
   AgentEventView,
+  AgentMetricPoint,
   AgentView,
   DiscoveryView,
 } from '@dunxon/contract';
@@ -20,6 +21,7 @@ import {
   toAgentEventView,
   toAgentView,
   toDiscoveryView,
+  toMetricPoint,
 } from './agents.views.js';
 import { CommandsService } from './commands.service.js';
 import {
@@ -64,6 +66,11 @@ export class AgentsService implements OnInit {
    */
   @Interval(60_000, { name: 'agents.expire-commands' })
   sweep(): number {
+    const before = new Date(
+      Date.now() - this.config.get('agents').metricsRetentionMs,
+    ).toISOString();
+    const pruned = this.repo.pruneMetrics(before);
+    if (pruned > 0) this.logger.info('pruned old metrics', { pruned });
     return this.commands.expire();
   }
 
@@ -221,6 +228,18 @@ export class AgentsService implements OnInit {
       lastReport: report,
     });
 
+    // A point in the time series, so the console can chart a trend rather than
+    // only the latest snapshot. `at` is the host's own timestamp, so the x-axis
+    // is when the sample was taken, not when it happened to arrive.
+    this.repo.recordMetric({
+      id: crypto.randomUUID(),
+      agentId: agent.id,
+      at: report.collectedAt,
+      memBytes: report.agentMemBytes,
+      cpuPercent: report.agentCpuPercent,
+      load1: report.load1,
+    });
+
     return {
       ok: true,
       agentId: agent.id,
@@ -319,6 +338,15 @@ export class AgentsService implements OnInit {
       throw new HttpError(HttpStatusCode.NOT_FOUND, `No agent ${id}`);
     }
     return this.repo.eventsFor(id, limit).map(toAgentEventView);
+  }
+
+  /** A window of an agent's metric history, oldest first, for the trend charts. */
+  metrics(id: string, minutes: number): readonly AgentMetricPoint[] {
+    if (this.repo.find(id) === null) {
+      throw new HttpError(HttpStatusCode.NOT_FOUND, `No agent ${id}`);
+    }
+    const since = new Date(Date.now() - minutes * 60_000).toISOString();
+    return this.repo.metricsSince(id, since).map(toMetricPoint);
   }
 
   list(): readonly AgentView[] {

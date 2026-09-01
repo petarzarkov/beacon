@@ -94,6 +94,18 @@ const envSchema = z.object({
    * this only seeds the first boot.
    */
   AGENT_PROPAGATION_ALLOWED: z.stringbool().default(false),
+  /**
+   * How long a per-agent metric sample is kept before the sweep prunes it. The
+   * panel keeps a bounded history for trend charts, not an archive - long enough
+   * to see a shift, short enough that a busy fleet does not grow the database
+   * without bound.
+   */
+  AGENT_METRICS_RETENTION_HOURS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(720)
+    .default(24),
 });
 
 export interface AppConfig {
@@ -119,6 +131,7 @@ export interface AppConfig {
     readonly offlineAfterMs: number;
     readonly commandTtlMs: number;
     readonly propagationAllowedDefault: boolean;
+    readonly metricsRetentionMs: number;
   };
 }
 
@@ -187,6 +200,7 @@ export const validate = (env: ConfigSource): AppConfig => {
         value.AGENT_OFFLINE_AFTER_MS ?? value.AGENT_REPORT_INTERVAL_MS * 3,
       commandTtlMs: value.AGENT_COMMAND_TTL_MS,
       propagationAllowedDefault: value.AGENT_PROPAGATION_ALLOWED,
+      metricsRetentionMs: value.AGENT_METRICS_RETENTION_HOURS * 3_600_000,
     },
   };
 };

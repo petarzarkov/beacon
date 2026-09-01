@@ -1,11 +1,13 @@
 import type {
   AgentCommandRow,
   AgentEventRow,
+  AgentMetricRow,
   AgentRow,
   DiscoveredHostRow,
 } from './agents.repository.js';
 import type {
   AgentEventView,
+  AgentMetricPoint,
   AgentView,
   CommandView,
   DiscoveryView,
@@ -81,6 +83,13 @@ export const toAgentEventView = (row: AgentEventRow): AgentEventView => ({
   message: row.message,
   at: row.at,
   receivedAt: row.receivedAt,
+});
+
+export const toMetricPoint = (row: AgentMetricRow): AgentMetricPoint => ({
+  at: row.at,
+  memBytes: row.memBytes,
+  cpuPercent: row.cpuPercent,
+  load1: row.load1,
 });
 
 export const toDiscoveryView = (row: DiscoveredHostRow): DiscoveryView => ({
