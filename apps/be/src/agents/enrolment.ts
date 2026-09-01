@@ -33,6 +33,26 @@ export const tokenMatches = (
   return timingSafeEqual(a, b);
 };
 
+/**
+ * Canonicalise a client address, so one host is one string.
+ *
+ * A dual-stack socket reports an IPv4 peer as an IPv4-mapped IPv6 address
+ * (`::ffff:127.0.0.1`), and whether a runtime hands back that, a bare `127.0.0.1`
+ * or IPv6 loopback (`::1`) varies by version and platform - enough that a grant
+ * minted for `127.0.0.1` was rejected against the very connection that minted it
+ * once CI moved to a newer Bun. Folding the mapped form back to its IPv4 address
+ * (and IPv6 loopback onto IPv4) makes the address a grant is bound to, the one
+ * discovery records, and the one a later connection presents all agree - so the
+ * audience check turns on the host, not on how a socket happened to spell it.
+ */
+export const normalizeAddress = (address: string | null): string | null => {
+  if (address === null) return null;
+  const mapped = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i.exec(address);
+  if (mapped !== null) return mapped[1]!;
+  if (address === '::1') return '127.0.0.1';
+  return address;
+};
+
 /** Distinguishes a grant from the shared token without parsing it. */
 const GRANT_PREFIX = 'g1';
 

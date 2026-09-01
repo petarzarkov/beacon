@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Anchor,
   Badge,
   Group,
   Progress,
@@ -27,6 +28,7 @@ import {
   type QueueableCommand,
 } from '../api/agents';
 import { memoryUsed, relativeTime } from '../lib/format';
+import { agentPath, navigate } from '../lib/nav';
 import { CommandBadge } from './CommandBadge';
 
 const CONTROLS: readonly {
@@ -119,7 +121,16 @@ export const AgentsTable = (): React.ReactElement => {
       <Table.Tr key={agent.id}>
         <Table.Td>
           <Stack gap={0}>
-            <Text fw={500}>{agent.hostname}</Text>
+            <Anchor
+              fw={500}
+              href={agentPath(agent.id)}
+              onClick={(event) => {
+                event.preventDefault();
+                navigate(agentPath(agent.id));
+              }}
+            >
+              {agent.hostname}
+            </Anchor>
             <Text size="xs" c="dimmed">
               {agent.os} · {agent.arch}
             </Text>

@@ -13,6 +13,8 @@ import {
 import { IconLogout, IconUserCircle } from '@tabler/icons-react';
 import { useDiscovered, useRelease } from '../api/agents';
 import { useSignOut, type Operator } from '../api/auth';
+import { agentIdFromPath, usePath } from '../lib/nav';
+import { AgentDetail } from './AgentDetail';
 import { AgentsTable } from './AgentsTable';
 import { CommandsPanel } from './CommandsPanel';
 import { DiscoveredHosts } from './DiscoveredHosts';
@@ -76,6 +78,10 @@ export const FleetPage = ({
     (host) => host.enrolledAgentId === null,
   ).length;
 
+  // The one route besides the fleet: an agent's own page. Read from the URL, so
+  // it deep-links and survives a reload (the panel serves the SPA for it).
+  const selectedAgentId = agentIdFromPath(usePath());
+
   return (
     <Container size="xl" py="lg">
       <Group justify="space-between" mb="lg">
@@ -94,36 +100,40 @@ export const FleetPage = ({
         </Group>
       </Group>
 
-      <Paper withBorder radius="md" p="md">
-        <Tabs defaultValue="agents">
-          <Tabs.List mb="md">
-            <Tabs.Tab value="agents">Agents</Tabs.Tab>
-            <Tabs.Tab value="commands">Commands</Tabs.Tab>
-            <Tabs.Tab
-              value="discovered"
-              rightSection={
-                discoveredCount > 0 ? (
-                  <Badge size="xs" circle variant="filled">
-                    {discoveredCount}
-                  </Badge>
-                ) : null
-              }
-            >
-              Discovered
-            </Tabs.Tab>
-          </Tabs.List>
+      {selectedAgentId !== null ? (
+        <AgentDetail agentId={selectedAgentId} />
+      ) : (
+        <Paper withBorder radius="md" p="md">
+          <Tabs defaultValue="agents">
+            <Tabs.List mb="md">
+              <Tabs.Tab value="agents">Agents</Tabs.Tab>
+              <Tabs.Tab value="commands">Commands</Tabs.Tab>
+              <Tabs.Tab
+                value="discovered"
+                rightSection={
+                  discoveredCount > 0 ? (
+                    <Badge size="xs" circle variant="filled">
+                      {discoveredCount}
+                    </Badge>
+                  ) : null
+                }
+              >
+                Discovered
+              </Tabs.Tab>
+            </Tabs.List>
 
-          <Tabs.Panel value="agents">
-            <AgentsTable />
-          </Tabs.Panel>
-          <Tabs.Panel value="commands">
-            <CommandsPanel />
-          </Tabs.Panel>
-          <Tabs.Panel value="discovered">
-            <DiscoveredHosts />
-          </Tabs.Panel>
-        </Tabs>
-      </Paper>
+            <Tabs.Panel value="agents">
+              <AgentsTable />
+            </Tabs.Panel>
+            <Tabs.Panel value="commands">
+              <CommandsPanel />
+            </Tabs.Panel>
+            <Tabs.Panel value="discovered">
+              <DiscoveredHosts />
+            </Tabs.Panel>
+          </Tabs>
+        </Paper>
+      )}
     </Container>
   );
 };

@@ -54,7 +54,11 @@ console drives all of it; and everything is covered end to end by real processes
 - **Auth** — Better Auth sessions guard the console API; agent routes are token-
   checked instead. No public sign-up: `bun run create:admin` is the only way an
   operator comes to exist, because an account here can restart machines.
-  `APP_URL` + trusted origins are wired for a panel served at a real domain.
+  `APP_URL` + trusted origins are wired for a panel served at a real domain, and
+  the panel **refuses to boot on the development `AUTH_SECRET`** once `APP_URL` is
+  a real domain or a proxy is trusted — the same secret signs both session
+  cookies and deployment grants, so shipping the published default is a boot-time
+  error, not a first-login surprise.
 - **Health** — readiness reports whether a release is published and how much of
   the fleet is reporting, both non-critical.
 
@@ -81,7 +85,12 @@ container is built, for any user; everything else boots the container.
   Creates the run user if missing. _Built and typechecked; not yet exercised on a
   real systemd host — see below._
 - **`update`** — verifies the published sha256, stages beside the target and
-  renames, restarts via systemd. Runs as root from the timer.
+  renames, restarts via systemd. Runs as root from the timer. **Proven end to
+  end**: the swap runs against a real panel and release into a temp path, the
+  hash-mismatch refusal leaves the old binary intact, and the operator-driven
+  queue reaches the swap — the install path and restart are config seams
+  (defaulting to `/usr/local/bin` and systemd) that let the suite exercise the
+  real code without a machine.
 - **`discover`** — a TCP connect sweep of the subnet (no raw socket, so no
   privilege), reported to the panel and never acted on.
 - **`propagate`** — autonomous self-spread, **off by default**. See below.
@@ -90,12 +99,18 @@ container is built, for any user; everything else boots the container.
 
 ### Console (`apps/fe`)
 
-Working end to end. A session gate (`useSession` → login or fleet, no router for
-two screens), then three views:
+Working end to end. A session gate (`useSession` → login or fleet), then the
+fleet's three tabs and a per-agent detail page — path-based navigation over the
+History API, no router library, so a screen is still a URL: `/agents/:id`
+deep-links and survives a reload (the panel serves the SPA for it).
 
 - **Agents** — the fleet with derived `connected`, version + update flag, memory
   and load, the outstanding intent per agent (never a tick for the button press),
-  and the controls: report / update / restart / discover / forget.
+  and the controls: report / update / restart / discover / forget. Each row's host
+  links to that agent's page.
+- **Agent detail** — one host in full: its state, uptime, memory, address and
+  install lineage, its own command history, and the same controls, on a page an
+  operator can link to or reload.
 - **Commands** — open vs. recent history, each with its state and detail.
 - **Discovered** — swept hosts not yet managed, with a deployment form that takes
   the credential per install and defaults the callback URL to this origin.
@@ -113,12 +128,21 @@ another app's `src`; the panel's zod schemas validate into these same shapes.
 ### End-to-end (`e2e/`)
 
 An in-process panel on an ephemeral port plus **real agent subprocesses** — the
-only way to test the three things that matter: that `restart` really ends the
-process, that a fresh process reports a fresh uptime, and that an identity on disk
-is found again by a different process. 29 tests across enrolment, the command
-lifecycle, releases, provisioning, the console (SPA serving + the auth gate), the
-propagation kill switch, and a multi-agent fleet with an offline host. 33 tests.
-`bun run test:e2e`. The harness is the one place that still boots the backend
+only way to test the things that matter: that `restart` really ends the process,
+that a fresh process reports a fresh uptime, that an identity on disk is found
+again by a different process, and that **self-update actually swaps the binary**
+and comes back on the new one. 45 tests across enrolment, the command lifecycle,
+releases, self-update (the real swap, the hash-mismatch refusal, the
+operator-driven queue), provisioning, the propagation kill switch, a multi-agent
+fleet with an offline host, and the console — both the panel serving the SPA and
+**the SPA itself driven in a real browser** (Playwright): the live fleet table, an
+agent's detail page opened from its row, the deep link resolving on reload, and a
+command queued from that page settling as an intent. Sign-in is only the way in,
+not the subject — Better Auth covers auth itself. `bun run test:e2e`.
+
+The browser tests skip themselves where the console is unbuilt or no Chromium is
+installed (`bunx playwright install chromium`), so a bare checkout stays green; CI
+does both and runs them. The harness is the one place that still boots the backend
 in-process (`createApp`), which is inherent to an in-process suite rather than a
 cross-import of types.
 

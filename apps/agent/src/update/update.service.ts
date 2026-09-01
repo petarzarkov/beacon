@@ -2,7 +2,6 @@ import { Logger } from '@dunx/core';
 import { chmodSync, renameSync, unlinkSync } from 'node:fs';
 import {
   AgentConfigService,
-  INSTALL_PATH,
   SERVICE_NAME,
   UPDATE_SERVICE_NAME,
 } from '../config/settings.js';
@@ -45,13 +44,16 @@ export class UpdateService {
         : 'already on the published version';
     }
 
-    const result = Bun.spawnSync([
-      'sudo',
-      '-n',
-      'systemctl',
-      'start',
-      UPDATE_SERVICE_NAME,
-    ]);
+    // Production asks the root update unit through the one sudo rule `install`
+    // grants. The override runs the swap directly, for a host without systemd -
+    // it is exactly what that unit's `ExecStart` does (`dunxon-agent update`), so
+    // the operator-driven path is tested rather than left to a real machine.
+    const trigger = this.config.get('updateTriggerCommand');
+    const command =
+      trigger === undefined
+        ? ['sudo', '-n', 'systemctl', 'start', UPDATE_SERVICE_NAME]
+        : [trigger];
+    const result = Bun.spawnSync(command);
     if (!result.success) {
       throw new Error(
         `Cannot update: this agent is unprivileged and could not start ${UPDATE_SERVICE_NAME} (${new TextDecoder().decode(result.stderr).trim() || `exit ${result.exitCode}`}). It will update on its own timer.`,
@@ -87,11 +89,12 @@ export class UpdateService {
      *
      * The running process keeps its own inode, so this is safe to do live.
      */
-    const staged = `${INSTALL_PATH}.next`;
+    const installPath = this.config.get('installPath');
+    const staged = `${installPath}.next`;
     try {
       await Bun.write(staged, bytes);
       chmodSync(staged, 0o755);
-      renameSync(staged, INSTALL_PATH);
+      renameSync(staged, installPath);
     } catch (error) {
       try {
         unlinkSync(staged);
@@ -110,7 +113,15 @@ export class UpdateService {
   }
 
   #restartService(): void {
-    const result = Bun.spawnSync(['systemctl', 'restart', SERVICE_NAME], {
+    // Production restarts through systemd. The override exists only so a host
+    // without it - a CI runner, the e2e suite - can still exercise this path and
+    // record that the restart fired, rather than the whole step being untested.
+    const override = this.config.get('restartCommand');
+    const command =
+      override === undefined
+        ? ['systemctl', 'restart', SERVICE_NAME]
+        : [override];
+    const result = Bun.spawnSync(command, {
       stdout: 'inherit',
       stderr: 'inherit',
     });

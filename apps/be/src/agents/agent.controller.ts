@@ -27,6 +27,7 @@ import {
 } from './agents.schemas.js';
 import { AgentsService } from './agents.service.js';
 import { CommandsService } from './commands.service.js';
+import { normalizeAddress } from './enrolment.js';
 import { ReleasesService } from './releases.service.js';
 
 /**
@@ -57,9 +58,13 @@ export class AgentController {
     private readonly address: ClientAddress,
   ) {}
 
-  /** `undefined` from `ClientAddress` becomes `null`: one absent value, not two. */
+  /**
+   * `undefined` from `ClientAddress` becomes `null`: one absent value, not two.
+   * Normalised so a host is one string regardless of how the socket spells a
+   * loopback or IPv4-mapped peer - see `normalizeAddress`.
+   */
   #ipOf(req: BunRequest): string | null {
-    return this.address.of(req) ?? null;
+    return normalizeAddress(this.address.of(req) ?? null);
   }
 
   #agent(req: BunRequest): AgentRow {

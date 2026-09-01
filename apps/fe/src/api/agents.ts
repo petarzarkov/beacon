@@ -58,6 +58,14 @@ export const useAgents = (): UseQueryResult<readonly AgentView[]> =>
     refetchInterval: LIVE_MS,
   });
 
+/** One agent, for the detail page. Same live cadence as the fleet list. */
+export const useAgent = (id: string): UseQueryResult<AgentView> =>
+  useQuery({
+    queryKey: [...keys.agents, id],
+    queryFn: () => http.get<AgentView>(`/api/agents/${id}`),
+    refetchInterval: LIVE_MS,
+  });
+
 export const useCommands = (
   state: 'open' | 'recent' = 'open',
 ): UseQueryResult<readonly CommandView[]> =>

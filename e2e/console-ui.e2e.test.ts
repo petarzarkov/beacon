@@ -1,0 +1,131 @@
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { existsSync } from 'node:fs';
+import { hostname } from 'node:os';
+import { join } from 'node:path';
+import { chromium, type Browser, type Page } from 'playwright';
+import { createOperator } from '@be/auth/create-operator.js';
+import { Agent, startPanel, type Panel } from './harness/index.js';
+
+/**
+ * The console driven the way an operator drives it: a real browser, the built
+ * SPA the panel serves, a real agent reporting in behind it.
+ *
+ * The focus is the dashboard itself - the fleet table and each agent's detail
+ * page - not the sign-in, which is Better Auth's own and tested there. Signing in
+ * is only the means to reach the console; what these assert is that the table
+ * shows a live agent, that its row opens a detail page that deep-links and
+ * reloads, and that a command queued from that page settles as an intent.
+ *
+ * Skipped, not failed, where it cannot run: the console has to be built into the
+ * panel's public dir (`bun run build:fe`) and a Chromium installed
+ * (`bunx playwright install chromium`). CI does both; a bare checkout has neither.
+ */
+const built = existsSync(join(import.meta.dir, '../apps/be/public/index.html'));
+let chromiumReady = false;
+try {
+  chromiumReady = existsSync(chromium.executablePath());
+} catch {
+  chromiumReady = false;
+}
+const canDrive = built && chromiumReady;
+
+const OPERATOR = {
+  email: 'console-e2e@example.com',
+  password: 'console-e2e-password',
+  name: 'Console E2E',
+};
+
+describe('the console (browser)', () => {
+  let panel: Panel;
+  let agent: Agent;
+  let browser: Browser;
+
+  beforeAll(async () => {
+    if (!canDrive) return;
+    panel = await startPanel({ release: { version: '9.9.9' } });
+    // Created out of band, the way `create:admin` makes one - the console has no
+    // sign-up, so the browser can only ever sign in to an account that exists.
+    await createOperator(panel.app, OPERATOR);
+    // A real agent reporting in, so the fleet table has a live row to act on.
+    agent = await Agent.started(panel);
+    browser = await chromium.launch({ headless: true });
+  });
+
+  afterAll(async () => {
+    if (!canDrive) return;
+    await browser.close();
+    await agent.dispose();
+    await panel.close();
+  });
+
+  // The browser reaches the in-process panel over the loopback it bound.
+  const origin = (): string => panel.url.replace('0.0.0.0', '127.0.0.1');
+
+  /** Sign in and land on the fleet. The means to the dashboard, not the subject. */
+  const signIn = async (page: Page): Promise<void> => {
+    await page.goto(origin());
+    await page.getByLabel('Email').fill(OPERATOR.email);
+    await page.getByLabel('Password').fill(OPERATOR.password);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.getByRole('tab', { name: 'Agents' }).waitFor();
+  };
+
+  it('shows the live agent in the fleet table, opens its detail page, and acts on it', async () => {
+    const page = await browser.newPage();
+    try {
+      await signIn(page);
+
+      // The table: the published release, and the live agent as a row.
+      await page.getByText('release 9.9.9').waitFor();
+      await page.getByText('connected').waitFor();
+      const hostLink = page.getByRole('link', { name: hostname() });
+      await hostLink.waitFor();
+
+      // Open the agent's own page from its row.
+      await hostLink.click();
+      await page.getByRole('heading', { name: hostname() }).waitFor();
+      expect(page.url()).toContain(`/agents/${agent.agentId}`);
+      // The detail the table cannot show: full state and its own command history.
+      await page.getByText('Host uptime').waitFor();
+      await page.getByText('Command history').waitFor();
+
+      // A deep link, not just an in-app move: reloading the URL resolves back to
+      // this page rather than 404ing or bouncing to the fleet.
+      await page.reload();
+      await page.getByRole('heading', { name: hostname() }).waitFor();
+      expect(page.url()).toContain(`/agents/${agent.agentId}`);
+
+      // Queue a command from the detail page: honest feedback, then a real
+      // settle in this agent's history - an intent that completed, not a tick for
+      // the button press.
+      await page.getByRole('button', { name: 'Report now' }).click();
+      await page
+        .getByRole('alert')
+        .getByText('report queued')
+        .first()
+        .waitFor();
+      await page.getByText('report completed').waitFor();
+
+      // Back to the fleet.
+      await page.getByRole('link', { name: 'Fleet' }).click();
+      await page.getByRole('tab', { name: 'Agents' }).waitFor();
+      expect(new URL(page.url()).pathname).toBe('/');
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('deep-links straight to an agent detail page', async () => {
+    const page = await browser.newPage();
+    try {
+      // A fresh context signs in, then goes directly to the agent URL - the case
+      // of an operator opening a bookmarked or shared link.
+      await signIn(page);
+      await page.goto(`${origin()}/agents/${agent.agentId}`);
+      await page.getByRole('heading', { name: hostname() }).waitFor();
+      await page.getByText('Command history').waitFor();
+    } finally {
+      await page.close();
+    }
+  });
+});

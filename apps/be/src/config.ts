@@ -10,6 +10,17 @@ import { z } from 'zod';
  * checkout boots with no `.env` at all. Bun loads `.env` and `.env.local` itself,
  * so there is nothing here that reads a file.
  */
+/**
+ * The stand-in secret a clean checkout boots with. Fine for local use, and a
+ * boot-time error anywhere that looks like a real deployment - see the guard in
+ * `validate`. Named so the schema default and that guard cannot drift apart.
+ */
+const DEV_AUTH_SECRET = 'dunx-development-secret-not-for-production';
+
+/** A panel reachable only from this machine - the one place the dev secret is safe. */
+const isLocalUrl = (url: string): boolean =>
+  /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?\/?$/i.test(url);
+
 const envSchema = z.object({
   PORT: z.coerce.number().int().min(0).max(65535).default(3000),
   LOG_LEVEL: z.enum(LogLevel).default(LogLevel.INFO),
@@ -47,10 +58,7 @@ const envSchema = z.object({
    */
   DATABASE_FILE: z.string().default('./data/panel.sqlite'),
   /** better-auth signs session cookies with this, and the panel signs deployment grants with it. */
-  AUTH_SECRET: z
-    .string()
-    .min(32)
-    .default('dunx-development-secret-not-for-production'),
+  AUTH_SECRET: z.string().min(32).default(DEV_AUTH_SECRET),
   /** A `@Cron` that names no zone of its own runs in this one. */
   SCHEDULE_TZ: z.string().default('UTC'),
 
@@ -133,6 +141,25 @@ export const validate = (env: ConfigSource): AppConfig => {
   }
   const value = parsed.data;
 
+  const appUrl = value.APP_URL ?? `http://localhost:${value.PORT}`;
+
+  // The dev secret is fine locally and a refusal anywhere that looks live. A
+  // real APP_URL or a trusted proxy in front is a panel operators sign in to and
+  // agents dial - and the same secret signs both session cookies and the
+  // deployment grants that admit a host, so shipping the published default would
+  // mean anyone could forge either. Caught here, at boot, not at the first login.
+  if (
+    value.AUTH_SECRET === DEV_AUTH_SECRET &&
+    (value.TRUST_PROXY || !isLocalUrl(appUrl))
+  ) {
+    throw new Error(
+      'Configuration is invalid:\n - AUTH_SECRET: still the development default, ' +
+        'but this panel is configured for a real deployment ' +
+        `(${value.TRUST_PROXY ? 'TRUST_PROXY is on' : `APP_URL is ${appUrl}`}). ` +
+        'Set AUTH_SECRET to a strong secret: openssl rand -hex 32',
+    );
+  }
+
   return {
     port: value.PORT,
     appName: 'dunxon-be',
@@ -145,7 +172,7 @@ export const validate = (env: ConfigSource): AppConfig => {
     corsOrigin: value.CORS_ORIGIN,
     // The public origin, or a local default derived from the port so a clean
     // checkout still boots and signs in.
-    appUrl: value.APP_URL ?? `http://localhost:${value.PORT}`,
+    appUrl,
     trustProxy: value.TRUST_PROXY,
     database: { file: value.DATABASE_FILE },
     auth: { secret: value.AUTH_SECRET },

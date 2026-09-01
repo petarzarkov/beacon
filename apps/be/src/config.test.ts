@@ -38,4 +38,31 @@ describe('config', () => {
   it('refuses a log level it does not know', () => {
     expect(() => validate({ LOG_LEVEL: 'chatty' })).toThrow();
   });
+
+  const STRONG_SECRET = 'a'.repeat(64);
+
+  it('refuses the dev auth secret once APP_URL is a real domain', () => {
+    expect(() => validate({ APP_URL: 'https://panel.example.com' })).toThrow(
+      /AUTH_SECRET/,
+    );
+  });
+
+  it('refuses the dev auth secret behind a trusted proxy', () => {
+    expect(() => validate({ TRUST_PROXY: 'true' })).toThrow(/AUTH_SECRET/);
+  });
+
+  it('accepts a real deployment once AUTH_SECRET is set', () => {
+    const config = validate({
+      APP_URL: 'https://panel.example.com',
+      TRUST_PROXY: 'true',
+      AUTH_SECRET: STRONG_SECRET,
+    });
+    expect(config.appUrl).toBe('https://panel.example.com');
+    expect(config.trustProxy).toBe(true);
+  });
+
+  it('still boots locally on the dev secret, even with an explicit localhost APP_URL', () => {
+    expect(() => validate({ APP_URL: 'http://localhost:3000' })).not.toThrow();
+    expect(() => validate({ APP_URL: 'http://127.0.0.1:3000' })).not.toThrow();
+  });
 });

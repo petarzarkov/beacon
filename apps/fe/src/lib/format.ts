@@ -22,6 +22,17 @@ export const bytes = (value: number | null): string => {
   return `${size.toFixed(size < 10 && unit > 0 ? 1 : 0)} ${units[unit]}`;
 };
 
+/** A coarse, human duration for an uptime in seconds. */
+export const duration = (seconds: number | null): string => {
+  if (seconds === null) return '—';
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ${minutes % 60}m`;
+  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+};
+
 /** How much memory is in use, as a fraction, or null when the agent has not reported. */
 export const memoryUsed = (
   total: number | null,

@@ -41,9 +41,18 @@ jobs:
       - name: Build the console
         run: bun run build:fe
 
+      # The console e2e drives a real browser against the built SPA. Without a
+      # Chromium those tests skip themselves rather than fail; installing one
+      # here is what makes CI actually run them. `--with-deps` pulls the system
+      # libraries a headless browser needs on the runner.
+      - name: Install a browser for the console e2e
+        working-directory: e2e
+        run: bunx playwright install --with-deps chromium
+
       # A real panel and real agent processes, end to end: enrolment, the command
-      # lifecycle including a live restart, release distribution, discovery,
-      # deployment, and the console the panel serves. Last, because it is the
-      # slowest and depends on both builds.
+      # lifecycle including a live restart, self-update swapping the binary in
+      # place, release distribution, discovery, deployment, and the console -
+      # driven in a real browser. Last, because it is the slowest and depends on
+      # both builds and the browser.
       - name: End-to-end
         run: bun run test:e2e

@@ -68,6 +68,40 @@ const schema = z.object({
   AGENT_MACHINE_ID: z.string().min(1).optional(),
 
   /**
+   * The binary an update replaces, and therefore where `install` puts it.
+   *
+   * A real host never sets this - the default is the only sane place for it - but
+   * it has to be overridable, because the self-update swap is otherwise
+   * untestable: it renames a file over `/usr/local/bin/dunxon-agent`, which no
+   * test can own. The end-to-end suite points it at a temp path and drives the
+   * real swap against that. See `update.service.ts`.
+   */
+  AGENT_INSTALL_PATH: z.string().min(1).default(INSTALL_PATH),
+  /**
+   * Run in place of `systemctl restart` after a successful self-update.
+   *
+   * Same reason as `AGENT_INSTALL_PATH`: a machine without systemd - a CI runner,
+   * the e2e suite - cannot restart the service the production way, so the restart
+   * step would either fail or be skipped, and an update that never proves it
+   * restarts is not an update that has been tested. The suite sets this to a
+   * script that records the restart, so the whole path runs. Unset in production,
+   * where systemd owns the lifecycle.
+   */
+  AGENT_RESTART_COMMAND: z.string().min(1).optional(),
+  /**
+   * Run in place of `sudo systemctl start dunxon-agent-update.service` when an
+   * unprivileged service collects a queued `update`.
+   *
+   * In production the service cannot swap its own binary - that is the whole
+   * point of the privilege split - so it asks the root update unit to. That unit
+   * runs `dunxon-agent update`, i.e. the same swap this file performs. With no
+   * systemd to ask, the operator-driven `update` flow is untestable; the suite
+   * points this at a script that runs the real swap, so the queued path is
+   * proven end to end rather than only the swap in isolation. Unset in production.
+   */
+  AGENT_UPDATE_TRIGGER_COMMAND: z.string().min(1).optional(),
+
+  /**
    * Self-propagation: sweep the subnet and install the agent onto neighbours,
    * with no panel in the loop. **Off by default, and deliberately so.**
    *
@@ -118,6 +152,12 @@ export interface AgentConfig {
   readonly stateFile: string | undefined;
   readonly panelTimeoutMs: number;
   readonly machineId: string | undefined;
+  /** The binary a self-update replaces. Default `/usr/local/bin/dunxon-agent`. */
+  readonly installPath: string;
+  /** Overrides `systemctl restart` after an update. Unset in production. */
+  readonly restartCommand: string | undefined;
+  /** Overrides the `sudo systemctl start` update trigger. Unset in production. */
+  readonly updateTriggerCommand: string | undefined;
   readonly propagate: {
     readonly enabled: boolean;
     readonly user: string | undefined;
@@ -184,6 +224,9 @@ export const validate = (env: ConfigSource): AgentConfig => {
     stateFile: v.AGENT_STATE_FILE,
     panelTimeoutMs: v.PANEL_TIMEOUT_MS,
     machineId: v.AGENT_MACHINE_ID,
+    installPath: v.AGENT_INSTALL_PATH,
+    restartCommand: v.AGENT_RESTART_COMMAND,
+    updateTriggerCommand: v.AGENT_UPDATE_TRIGGER_COMMAND,
     propagate: {
       enabled: v.AGENT_PROPAGATE,
       user: v.AGENT_PROPAGATE_USER,
