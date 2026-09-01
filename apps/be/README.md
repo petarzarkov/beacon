@@ -1,71 +1,42 @@
-# dunxon-panel
+# dunxon-be
 
-Scaffolded with `bunx @dunx/create-app`.
+The panel: control plane, API, and release host for the agent fleet. Serves the
+operator console (`apps/fe`) at the same origin.
 
 ```bash
 bun install
-bun run dev     # restarts on a change
+bun run dev      # http://localhost:3000, restarting on a change
 bun run start
 ```
 
-## What is wired up
+There is no default admin and no public sign-up — an account here can restart
+machines. Create the first operator by hand:
 
-- **openapi** - OpenAPI 3.1 from the routes own schemas, plus the Swagger UI page.
-- **http** - CORS, a middleware of your own on the response, and error mapping.
-- **guards** - Route guards with @Roles and @Public, and a protected controller.
-- **database** - drizzle over bun:sqlite, with a schema, seeds and migrations.
-- **users** - A repository, a service and validated routes over the database.
-- **auth** - better-auth mounted, with SessionGuard and an audit trail.
-- **cache** - Bun.RedisClient behind a session store, degrading when absent.
-- **websockets** - A @Gateway with @OnMessage events, PubSub and a Redis relay.
-- **images** - Bun.Image resizing and format conversion behind a route.
-- **jobs** - bullmq queues over Bun.RedisClient, background handlers forked.
-- **files** - Uploads and downloads on Bun.file, with a workspace root.
-- **health** - `HealthModule`'s liveness and readiness probes, wired to this app's own indicators.
-- **schedule** - @Cron, @Interval and @OnceOnBoot on Bun.cron, armed at boot and triggerable.
-- **assets** - A static directory on Bun.file, with a short max-age and an immutable rule.
-- **client** - The outbound half of @dunx/http: retry, backoff and a typed FetchError.
+```bash
+bun run create:admin -- --email you@example.com --password 'a good one'
+```
 
-## Services
+Then sign in at `/`. Set `AGENT_ENROLMENT_TOKEN` (`openssl rand -hex 32`) so
+agents can enrol; without it enrolment is refused and the panel says so at boot.
 
-These features need something running. Each one degrades rather than failing the
-boot, so the app still starts without them.
+## What it is
 
-- **cache** needs Redis or Valkey
-- **websockets** needs Redis or Valkey, for multi-node fan-out only
-- **jobs** needs Redis or Valkey
+- **The agent protocol** — `/api/agent/*`, token-authenticated: enrol, report,
+  report command outcomes, report discovered hosts, pull the release + binary.
+  The report is the whole control channel; queued commands ride back on its reply.
+- **The console API** — `/api/agents/*`, session-guarded: the fleet, the command
+  lifecycle, discovered hosts, and delegated deployments.
+- **Release distribution** — serves the manifest and binary the fleet
+  self-updates from, sha256-verified by the agent.
+- **The console** — the built SPA, served with a deep-link fallback.
 
-## Layout
+No Redis, no queue, no worker: the database is a local SQLite file, so the panel
+starts with nothing else running. See [AGENTS.md](AGENTS.md) for the layout and
+the dunx rules, and [../../docs/architecture.md](../../docs/architecture.md) for
+why the panel never dials an agent.
 
-- `src/main.ts` - exports `createApp`, and serves it when run directly
-- `src/app.module.ts` - the root module, importing every feature
-- `src/config.ts` - one validation function, flat env in and a shaped object out
-- `src/docs/` - openapi
-- `src/http/` - http
-- `src/guards/` - guards
-- `src/database/` - database
-- `src/users/` - users
-- `src/auth/` - auth
-- `src/cache/` - cache
-- `src/chat/` - websockets
-- `src/pictures/` - images
-- `src/jobs/` - jobs
-- `src/storage/` - files
-- `src/health/` - health
-- `src/schedule/` - schedule
-- `src/assets/` - assets
-- `src/upstream/` - client
+## Docs
 
-`main.ts`, `app.module.ts` and `config.ts` were generated for the features you
-chose; everything else is copied from dunx's `examples/full`, which is run and
-toured in CI on every push. The `*.demo.ts` files are that example's scripted
-walkthroughs - delete one and its `providers` entry when you do not want it.
-
-A test imports `createApp` from `./main.js` and never starts a server: the
-`import.meta.main` block at the bottom of the file is false for an import.
-
-## Constructor injection
-
-`bunfig.toml` preloads `@dunx/transform`, which records each class's constructor
-parameter types so the container can resolve them. Without that line providers are
-built with no arguments and boot fails saying so.
+- Swagger UI: <http://localhost:3000/api/docs>
+- OpenAPI: <http://localhost:3000/api/openapi.json>
+- Health: <http://localhost:3000/api/health/ready>

@@ -1,80 +1,72 @@
-# dunxon-panel
+# dunxon-be
 
-Notes for an agent working in this application. It is a
-[dunx](https://github.com/petarzarkov/dunx) app, scaffolded by
-`bunx @dunx/create-app`.
+The panel: the control plane, the API, and the release host for the agent fleet.
+It also serves the operator console. A [dunx](https://github.com/petarzarkov/dunx)
+app, originally scaffolded by `bunx @dunx/create-app` and since stripped to the
+one feature it exists for.
+
+Read [../../docs/architecture.md](../../docs/architecture.md) first: the one
+constraint the whole system answers to is that **the panel can never dial an
+agent**, and everything here follows from it.
 
 ## Commands
 
 ```bash
 bun install
-bun run dev          # http://localhost:3000, restarting on a change
+bun run dev            # http://localhost:3000, restarting on a change
 bun run start
 bun test
 bun run typecheck
+bun run create:admin -- --email you@example.com --password '…'   # the only way an operator exists
 ```
 
-**There is no worker command.** `QueueModule` is given `consume: true`, so the
-container opens the workers at `onInit` and closes them before the connections they
-use. A handler marked `background: true` is forked by bullmq into
-`src/jobs/jobs.processor.ts`, which nobody runs by hand.
+**No external services.** The panel needs nothing running — the database is a
+local SQLite file, and there is no Redis, queue or worker. That is a deliberate
+narrowing from the scaffold: a control plane that must stay reachable to be useful
+should not have a dependency that can take it down.
 
 ## Layout
 
-- `src/main.ts` - exports `createApp`, and serves it when run directly
-- `src/app.module.ts` - the root module, importing every feature
-- `src/config.ts` - one validation function, flat env in and a shaped object out
-- `src/docs/` - openapi
-- `src/http/` - http
-- `src/guards/` - guards
-- `src/database/` - database
-- `src/users/` - users
-- `src/auth/` - auth
-- `src/cache/` - cache
-- `src/chat/` - websockets
-- `src/pictures/` - images
-- `src/jobs/` - jobs
-- `src/storage/` - files
-- `src/health/` - health
-- `src/schedule/` - schedule
-- `src/assets/` - assets
-- `src/upstream/` - client
-- `bunfig.toml` - the preload line constructor injection needs
+- `src/main.ts` — exports `createApp`, and serves it when run directly. Mounts
+  `Compression`, `StaticFiles`, `SpaFallback` and the request trail, in that
+  order, all ahead of any auth.
+- `src/app.module.ts` — the root module. Construction order is the list order.
+- `src/config.ts` — one validation function, flat env in and a shaped object out.
+- `src/agents/` — **the feature.** Two controllers, because an agent and an
+  operator are different callers with different credentials:
+  - `agent.controller.ts` — `/api/agent/*`, token-checked, `@Public()` (no
+    session). Enrol, report, outcomes, discovered, release + binary.
+  - `fleet.controller.ts` — `/api/agents/*`, `@UseGuards(SessionGuard)`. The
+    console's API: list, commands, discovered, deployments.
+  - `agents.service.ts` — enrolment, report ingest, the fleet views.
+  - `commands.service.ts` — the command lifecycle and the TTL sweep.
+  - `releases.service.ts` — serves the published binary + manifest.
+  - `enrolment.ts` — token hashing and the signed deployment grants.
+  - `agents.repository.ts` — every SQL statement, synchronous throughout.
+  - `agents.schema.ts` — the drizzle tables; `agents.schemas.ts` — the zod route
+    schemas (also the OpenAPI document); `agents.views.ts` — rows → what the
+    console sees.
+- `src/auth/` — better-auth via `@dunx/auth`: `auth.module.ts`, `auth.options.ts`
+  (shared with `scripts/create-admin.ts`), `auth.tables.ts`, `SessionGuard`, an
+  audit trail, and `create-operator.ts`. Sign-up is disabled; the console API is
+  session-guarded.
+- `src/console/` — serves the built SPA (`apps/fe` → `public/`) with a deep-link
+  fallback. One origin with the API, so the session cookie is first-party.
+- `src/database/` — one connection, one drizzle handle. `schema.ts` re-exports
+  the auth tables and the agents tables; no tables of its own.
+- `src/health/` — `/api/health/{live,ready}`; readiness reports whether a release
+  is published and how much of the fleet is reporting.
+- `src/http/` — CORS, compression, error mapping and the request trail, read from
+  config.
+- `bunfig.toml` — the one preload line constructor injection needs.
 
-`main.ts`, `app.module.ts` and `config.ts` were generated for the features chosen
-at scaffold time. Everything else was copied from dunx's `examples/full`. The
-`*.demo.ts` files are that example's scripted walkthroughs; delete one and its
-`providers` entry to drop it.
+The shared wire types (`HostReport`, the command vocabulary, the console view
+shapes) live in **`@dunxon/contract`** (`libs/contract`), not here — the agent and
+console read the same definitions. The zod schemas in `agents.schemas.ts` validate
+requests into those shapes.
 
 A test imports `createApp` from `./main.js`; the `import.meta.main` block at the
 bottom is what stops that starting a server.
-
-## What is wired up
-
-- **openapi** - OpenAPI 3.1 from the routes own schemas, plus the Swagger UI page.
-- **http** - CORS, a middleware of your own on the response, and error mapping.
-- **guards** - Route guards with @Roles and @Public, and a protected controller.
-- **database** - drizzle over bun:sqlite, with a schema, seeds and migrations.
-- **users** - A repository, a service and validated routes over the database.
-- **auth** - better-auth mounted, with SessionGuard and an audit trail.
-- **cache** - Bun.RedisClient behind a session store, degrading when absent.
-- **websockets** - A @Gateway with @OnMessage events, PubSub and a Redis relay.
-- **images** - Bun.Image resizing and format conversion behind a route.
-- **jobs** - bullmq queues over Bun.RedisClient, background handlers forked.
-- **files** - Uploads and downloads on Bun.file, with a workspace root.
-- **health** - `HealthModule`'s liveness and readiness probes, wired to this app's own indicators.
-- **schedule** - @Cron, @Interval and @OnceOnBoot on Bun.cron, armed at boot and triggerable.
-- **assets** - A static directory on Bun.file, with a short max-age and an immutable rule.
-- **client** - The outbound half of @dunx/http: retry, backoff and a typed FetchError.
-
-## Services
-
-Each of these reports itself degraded rather than failing the boot, so the app
-starts without them.
-
-- **cache** needs Redis or Valkey
-- **websockets** needs Redis or Valkey, for multi-node fan-out only
-- **jobs** needs Redis or Valkey
 
 ## Rules that produce a boot error when broken
 
@@ -87,14 +79,15 @@ starts without them.
   records each class's constructor parameter types. Removing that line makes every
   provider fail at boot.
 - **A constructor parameter whose type is erased fails at boot, naming the
-  parameter.** An interface, a primitive, a union, a class type parameter, or a
-  `import type` at an injection site all record as `unresolved`. Inject a class,
-  and drop `type` from the import.
-- **Relative imports carry `.js`**: `'./users.service.js'`, never
-  `'./users.service'`.
+  parameter.** An interface, a primitive, a union, or an `import type` at an
+  injection site all record as `unresolved`. Inject a class, and drop `type` from
+  the import — which is why a repository injects `SyncDatabase`, not a type alias.
+- **Relative imports carry `.js`**: `'./agents.service.js'`, never
+  `'./agents.service'`.
 - **A module's `exports` is its public surface.** The container is scoped per
-  module, so a provider another module injects has to be exported by the module that
-  declares it.
+  module, so a provider another module injects has to be exported by the module
+  that declares it. `AccountsModule` exports `SessionGuard` and `AuthContext` for
+  exactly this reason.
 - **`bun` only.** No `npm`, `npx`, `yarn` or `pnpm`; run tools with `bunx`.
 
 ## Reading this app instead of grepping it
@@ -109,5 +102,5 @@ graph and never boots the app.
 
 ## The framework's own instructions
 
-- <https://petarzarkov.github.io/dunx/setup.md> - installing, wiring and verifying a dunx app
-- <https://petarzarkov.github.io/dunx/llms.txt> - every dunx document, as raw markdown
+- <https://petarzarkov.github.io/dunx/setup.md> — installing, wiring and verifying a dunx app
+- <https://petarzarkov.github.io/dunx/llms.txt> — every dunx document, as raw markdown
