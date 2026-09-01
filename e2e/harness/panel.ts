@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { HttpApp } from '@dunx/http';
 import { createApp } from '@be/main.js';
 import { createOperator } from '@be/auth/create-operator.js';
+import { mintGrant } from '@be/agents/enrolment.js';
 import { MANIFEST_FILE, type ReleaseManifest } from '@dunxon/contract';
 import { Operator } from './operator.js';
 
@@ -35,6 +36,16 @@ export interface Panel {
   operator(): Promise<Operator>;
   /** A signed-in non-admin operator, for testing role-gated routes. */
   plainUser(): Promise<Operator>;
+  /**
+   * Mint a signed deployment grant for the given address.
+   *
+   * Useful in e2e tests that need to enrol an agent via a grant without going
+   * through the full SSH-install flow. The grant is scoped to `address` and
+   * valid for `ttlMs` (default 60 s). In test environments without TRUST_PROXY,
+   * the panel sees no source IP, so the address-match check is skipped and any
+   * address works.
+   */
+  grantFor(address: string, ttlMs?: number): string;
   close(): Promise<void>;
 }
 
@@ -81,6 +92,7 @@ export const startPanel = async (
     // which is itself asserted in enrolment.e2e.ts.
     AUTH_SECRET: `e2e-secret-${crypto.randomUUID()}`,
   };
+  const authSecret = env['AUTH_SECRET']!;
 
   // Config is read from the environment when the container is built, so this has
   // to be in place before `createApp` and restored after it - otherwise a second
@@ -113,6 +125,9 @@ export const startPanel = async (
       const password = 'e2e-operator-password';
       await createOperator(app, { email, password, admin: false });
       return Operator.signIn(base, email, password);
+    },
+    grantFor(address: string, ttlMs = 60_000): string {
+      return mintGrant(authSecret, address, Date.now() + ttlMs);
     },
     async close(): Promise<void> {
       await app.shutdown();

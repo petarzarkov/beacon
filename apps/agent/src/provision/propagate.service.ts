@@ -95,11 +95,24 @@ export class PropagateService {
       .map((host) => host.address)
       .filter((address) => !mine.has(address));
 
+    // Hard cap: never start more installs than `maxPerPass` in one sweep.
+    // `candidates` (the full list) is preserved in the result so the caller can
+    // see the full blast radius; only the loop is truncated so the deferred
+    // hosts are picked up next time rather than skipped permanently.
+    const toAttempt = candidates.slice(0, propagate.maxPerPass);
+    if (candidates.length > propagate.maxPerPass) {
+      this.logger.info('propagation capped for this pass', {
+        total: candidates.length,
+        capped: propagate.maxPerPass,
+        deferred: candidates.length - propagate.maxPerPass,
+      });
+    }
+
     const installed: string[] = [];
     const skipped: { address: string; reason: string }[] = [];
     const failed: { address: string; error: string }[] = [];
 
-    for (const address of candidates) {
+    for (const address of toAttempt) {
       const target = { address, credential };
       try {
         if (await installer.isInstalled(target)) {

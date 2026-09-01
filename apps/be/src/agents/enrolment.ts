@@ -37,31 +37,38 @@ export const tokenMatches = (
 const GRANT_PREFIX = 'g1';
 
 /**
+ * The separator between grant fields.
+ *
+ * `|` is chosen deliberately: it does not appear in IPv4 addresses, ISO
+ * timestamps, decimal numbers, or hex strings — the only characters that
+ * appear in a grant. The old format used `.` which clashed with IPv4 address
+ * octets, causing `verifyGrant` to see more parts than expected and return
+ * `malformed` for every real IP.
+ */
+const SEP = '|';
+
+/**
  * A **deployment grant**: an enrolment credential scoped to one address and a
- * few minutes.
+ * few minutes, now also single-use (see `AgentsRepository.markGrantUsed`).
  *
  * A delegated install has to hand the target machine something it can enrol
  * with, and handing over the fleet-wide token would mean every managed host
- * carries the credential that admits any host. This is the alternative, and it
- * needs no storage: the panel signs `address|expiry` with its own secret and
- * verifies the signature on the way back, so a leaked grant admits one address
- * for the rest of its window and nothing else, ever.
- *
- * Not single use - that would need a table and a write on the hot enrolment
- * path. Scoped and expiring is the property that matters: the window is minutes
- * and the audience is one machine that is being given an agent anyway.
+ * carries the credential that admits any host. This is the alternative: the
+ * panel signs `address|expiry` with its own secret and verifies the signature
+ * on the way back, so a leaked grant admits one address for the rest of its
+ * window and nothing else, ever — and after the fix it can only be spent once.
  */
 export const mintGrant = (
   secret: string,
   address: string,
   expiresAtMs: number,
 ): string => {
-  const claim = `${GRANT_PREFIX}.${expiresAtMs}.${address}`;
-  return `${claim}.${sign(secret, claim)}`;
+  const claim = `${GRANT_PREFIX}${SEP}${expiresAtMs}${SEP}${address}`;
+  return `${claim}${SEP}${sign(secret, claim)}`;
 };
 
 export const isGrant = (token: string): boolean =>
-  token.startsWith(`${GRANT_PREFIX}.`);
+  token.startsWith(`${GRANT_PREFIX}${SEP}`);
 
 export interface GrantCheck {
   readonly ok: boolean;
@@ -81,7 +88,7 @@ export const verifyGrant = (
   sourceAddress: string | null,
   now: number,
 ): GrantCheck => {
-  const parts = token.split('.');
+  const parts = token.split(SEP);
   if (parts.length !== 4 || parts[0] !== GRANT_PREFIX) {
     return { ok: false, reason: 'malformed' };
   }
@@ -91,7 +98,10 @@ export const verifyGrant = (
     string,
     string,
   ];
-  const expected = sign(secret, `${GRANT_PREFIX}.${expiry}.${address}`);
+  const expected = sign(
+    secret,
+    `${GRANT_PREFIX}${SEP}${expiry}${SEP}${address}`,
+  );
   if (!constantTimeHex(signature, expected)) {
     return { ok: false, reason: 'bad signature' };
   }

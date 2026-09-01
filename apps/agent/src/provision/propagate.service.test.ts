@@ -159,3 +159,50 @@ describe('PropagateService', () => {
     }
   });
 });
+
+describe('PropagateService — rate limits', () => {
+  it('installs at most maxPerPass hosts in a single pass', async () => {
+    const { propagation, discovery, shutdown } = await build({
+      AGENT_PROPAGATE_MAX_PER_PASS: '2',
+    });
+    try {
+      // Four reachable neighbours, but the cap is 2.
+      fixedSweep(
+        [
+          host('10.0.0.2'),
+          host('10.0.0.3'),
+          host('10.0.0.4'),
+          host('10.0.0.5'),
+        ],
+        ['10.0.0.1'],
+      )(discovery);
+
+      const installer = new FakeInstaller(new Set());
+      const result = await propagation.propagate(installer);
+
+      // Sweep saw all 4; candidates = 4; installed = 2 (capped).
+      expect(result.swept).toBe(4);
+      expect(result.candidates).toHaveLength(4);
+      expect(result.installed).toHaveLength(2);
+      expect(installer.installed).toHaveLength(2);
+      // The first two are installed; the rest are deferred to the next pass.
+      expect(installer.installed).toEqual(['10.0.0.2', '10.0.0.3']);
+    } finally {
+      await shutdown();
+    }
+  });
+
+  it('installs all candidates when the count is within the cap', async () => {
+    const { propagation, discovery, shutdown } = await build({
+      AGENT_PROPAGATE_MAX_PER_PASS: '10',
+    });
+    try {
+      fixedSweep([host('10.0.0.2'), host('10.0.0.3')], ['10.0.0.1'])(discovery);
+
+      const result = await propagation.propagate(new FakeInstaller(new Set()));
+      expect(result.installed).toHaveLength(2);
+    } finally {
+      await shutdown();
+    }
+  });
+});

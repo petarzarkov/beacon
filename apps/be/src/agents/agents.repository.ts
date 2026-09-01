@@ -7,6 +7,7 @@ import {
   agents,
   discoveredHosts,
   fleetSettings,
+  usedGrants,
   type AgentCommandRow,
   type AgentRow,
   type DiscoveredHostRow,
@@ -44,8 +45,18 @@ export class AgentsRepository {
       last_ip TEXT,
       uptime_seconds INTEGER NOT NULL,
       agent_uptime_seconds INTEGER NOT NULL,
-      last_report TEXT
+      last_report TEXT,
+      installed_by TEXT
     )`);
+    // Additive migration for databases that existed before `installed_by` was
+    // added. `IF NOT EXISTS` is not supported by SQLite for ADD COLUMN, so the
+    // try/catch is the idiomatic approach: it is a no-op on a fresh database
+    // that has the column from the CREATE TABLE above.
+    try {
+      this.db.run(sql`ALTER TABLE agents ADD COLUMN installed_by TEXT`);
+    } catch {
+      /* already present */
+    }
     this.db.run(sql`CREATE TABLE IF NOT EXISTS agent_commands (
       id TEXT PRIMARY KEY,
       agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
@@ -74,6 +85,10 @@ export class AgentsRepository {
       value TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       updated_by TEXT
+    )`);
+    this.db.run(sql`CREATE TABLE IF NOT EXISTS used_grants (
+      grant_hash TEXT PRIMARY KEY,
+      used_at TEXT NOT NULL
     )`);
     this.db.run(
       sql`CREATE INDEX IF NOT EXISTS agents_last_seen ON agents (last_seen_at)`,
@@ -148,9 +163,44 @@ export class AgentsRepository {
           uptimeSeconds: row.uptimeSeconds,
           agentUptimeSeconds: row.agentUptimeSeconds,
           lastReport: row.lastReport,
+          // installedBy deliberately omitted: re-enrolment must not erase
+          // who originally deployed this host.
         },
       })
       .run();
+  }
+
+  /**
+   * Which agent found an address on its sweep, i.e. the one that deployed to it.
+   * Used to record propagation lineage on the new agent's row at enrolment.
+   */
+  installerFor(address: string): string | null {
+    return (
+      this.db
+        .select({ foundBy: discoveredHosts.foundBy })
+        .from(discoveredHosts)
+        .where(eq(discoveredHosts.address, address))
+        .orderBy(desc(discoveredHosts.lastSeenAt))
+        .get()?.foundBy ?? null
+    );
+  }
+
+  /**
+   * Atomically marks a deployment grant as spent.
+   *
+   * Returns `true` when the grant was newly recorded (first use), `false` when
+   * it was already present (replay). The primary key conflict is the race guard:
+   * two simultaneous enrolments with the same grant cannot both succeed.
+   */
+  markGrantUsed(grantHash: string, at: string): boolean {
+    return (
+      this.db
+        .insert(usedGrants)
+        .values({ grantHash, usedAt: at })
+        .onConflictDoNothing()
+        .returning()
+        .all().length > 0
+    );
   }
 
   /** What a report changes, which is deliberately not the agent's identity. */

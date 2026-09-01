@@ -77,6 +77,14 @@ export class AgentsService implements OnInit {
     const existing = this.repo.findByMachineId(body.machineId);
     const token = mintToken();
     const now = new Date().toISOString();
+
+    // When the credential is a grant, the agent that swept and found this
+    // address is the one that deployed here — record it for the lineage view.
+    const installedBy =
+      presented !== null && isGrant(presented) && sourceIp !== null
+        ? this.repo.installerFor(sourceIp)
+        : null;
+
     const row: AgentRow = {
       id: existing?.id ?? crypto.randomUUID(),
       machineId: body.machineId,
@@ -93,6 +101,8 @@ export class AgentsService implements OnInit {
       uptimeSeconds: existing?.uptimeSeconds ?? 0,
       agentUptimeSeconds: existing?.agentUptimeSeconds ?? 0,
       lastReport: existing?.lastReport ?? null,
+      // Preserve on re-enrolment: the original installer is the causal one.
+      installedBy: existing?.installedBy ?? installedBy,
     };
     this.repo.enrol(row);
 
@@ -140,6 +150,14 @@ export class AgentsService implements OnInit {
           reason: check.reason,
           sourceIp,
         });
+        throw denied;
+      }
+      // Single-use: an atomic INSERT OR IGNORE returns false when the grant hash
+      // is already in the table. A leaked grant can only be spent once.
+      if (
+        !this.repo.markGrantUsed(hashToken(presented), new Date().toISOString())
+      ) {
+        this.logger.warn('deployment grant replayed', { sourceIp });
         throw denied;
       }
       return;

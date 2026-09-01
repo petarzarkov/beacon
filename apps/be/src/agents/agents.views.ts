@@ -47,6 +47,7 @@ export const toAgentView = (row: AgentRow, ctx: ViewContext): AgentView => ({
   connected: ctx.now - Date.parse(row.lastSeenAt) < ctx.offlineAfterMs,
   updateAvailable:
     ctx.releaseVersion !== null && ctx.releaseVersion !== row.agentVersion,
+  installedBy: row.installedBy ?? null,
 });
 
 /**

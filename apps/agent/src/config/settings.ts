@@ -95,6 +95,17 @@ const schema = z.object({
     .default(300_000),
   /** The URL a *neighbour* can reach the panel on, which this host cannot infer for it. */
   AGENT_PROPAGATE_PANEL_URL: z.url().optional(),
+  /**
+   * A hard cap on how many new installs one pass may start.
+   *
+   * Without a limit, a single pass across a large flat /16 could attempt
+   * thousands of SSH connections in one go — too many to monitor and too easy to
+   * confuse with a scan. The default (50) lets a typical /24 finish in one pass
+   * while still being obviously bounded. Raise it deliberately if sweeping a
+   * larger segment; the /24 CIDR limit in `discover` is the companion blast-radius
+   * guard for the sweep itself.
+   */
+  AGENT_PROPAGATE_MAX_PER_PASS: z.coerce.number().int().min(1).default(50),
 });
 
 export interface AgentConfig {
@@ -115,6 +126,8 @@ export interface AgentConfig {
     readonly port: number;
     readonly intervalMs: number;
     readonly panelUrl: string | undefined;
+    /** Maximum new installs per pass. Prevents a single sweep from flooding a large segment. */
+    readonly maxPerPass: number;
   };
 }
 
@@ -179,6 +192,7 @@ export const validate = (env: ConfigSource): AgentConfig => {
       port: v.AGENT_PROPAGATE_PORT,
       intervalMs: v.AGENT_PROPAGATE_INTERVAL_MS,
       panelUrl: v.AGENT_PROPAGATE_PANEL_URL,
+      maxPerPass: v.AGENT_PROPAGATE_MAX_PER_PASS,
     },
   };
 };

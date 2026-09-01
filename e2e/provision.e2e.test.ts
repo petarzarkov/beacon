@@ -153,3 +153,85 @@ describe('provisioning', () => {
     expect(plan.candidates).not.toContain('127.0.0.1');
   });
 });
+
+describe('propagation lineage', () => {
+  /**
+   * The `installedBy` field on an agent view records which agent deployed it.
+   * For agents enrolled with the shared token (the normal path), it must be
+   * null. The grant-based lineage is exercised here at the API level — the SSH
+   * install itself cannot run in e2e, but the credential path and lineage
+   * recording are independent of it.
+   */
+  it('shows null installedBy for agents enrolled with the shared token', async () => {
+    const p = await startPanel({ reportIntervalMs: 1000 });
+    const op = await p.operator();
+    const a = await Agent.started(p);
+    try {
+      const view = await op.agent(a.agentId);
+      expect(view.installedBy).toBeNull();
+    } finally {
+      await a.dispose();
+      await p.close();
+    }
+  });
+
+  it('records the deploying agent on an agent enrolled via a grant', async () => {
+    // Use a dedicated panel so the grant and the agents are self-contained.
+    const p = await startPanel({ reportIntervalMs: 1000 });
+    const op = await p.operator();
+    const agentA = await Agent.started(p);
+
+    // The panel is already reachable at 127.0.0.1:panelPort (0.0.0.0 listen).
+    // We sweep 127.0.0.0/29 on that port: the only address that answers is
+    // 127.0.0.1, so agentA records it in discovered_hosts with foundBy=agentA.
+    // The test-runner's enrolment call ALSO comes from 127.0.0.1, so the grant
+    // minted for that address passes the source-IP check — and `installerFor`
+    // resolves to agentA.
+    const panelPort = parseInt(new URL(p.url).port, 10);
+
+    try {
+      await op.discover(agentA.agentId, {
+        cidr: '127.0.0.0/29',
+        ports: [panelPort],
+      });
+      await waitFor(async () => {
+        const found = (await op.discovered()).map((h) => h.address);
+        return found.includes('127.0.0.1');
+      }, '127.0.0.1 to be discovered (panel port answers)');
+
+      // Mint the grant for 127.0.0.1: this is both the address agentA found
+      // and the source IP the test connection presents to the panel.
+      const grant = p.grantFor('127.0.0.1');
+
+      // Enrol agent B directly via that grant, simulating what the deploy
+      // command would trigger on a real install.
+      const { ENROLMENT_HEADER } = await import('@dunxon/contract');
+      const enrolRes = await fetch(`${p.url}/api/agent/enrol`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          [ENROLMENT_HEADER]: grant,
+        },
+        body: JSON.stringify({
+          hostname: 'deployed-host',
+          os: 'linux',
+          arch: 'x64',
+          agentVersion: '0.0.0',
+          machineId: 'grant-lineage-target',
+        }),
+      });
+      expect(enrolRes.ok).toBe(true);
+      const { agentId: agentBId } = (await enrolRes.json()) as {
+        agentId: string;
+      };
+
+      // Agent B's view should name agent A as the installer — because A was
+      // the one that found 127.0.0.1 in its sweep.
+      const view = await op.agent(agentBId);
+      expect(view.installedBy).toBe(agentA.agentId);
+    } finally {
+      await agentA.dispose();
+      await p.close();
+    }
+  });
+});

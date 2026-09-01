@@ -50,6 +50,13 @@ export const agents = sqliteTable(
      * real state an agent passes through rather than a zeroed placeholder.
      */
     lastReport: text('last_report', { mode: 'json' }).$type<HostReport>(),
+    /**
+     * The agent that deployed this one, when it arrived via a deployment grant
+     * rather than the shared enrolment token. Null for the seed agent and for
+     * any host enrolled by hand. Together with `found_by` in `discovered_hosts`,
+     * this is what lets the console draw a "who installed whom" lineage tree.
+     */
+    installedBy: text('installed_by'),
   },
   (table) => [index('agents_last_seen').on(table.lastSeenAt)],
 );
@@ -124,7 +131,23 @@ export const fleetSettings = sqliteTable('fleet_settings', {
   updatedBy: text('updated_by'),
 });
 
+/**
+ * A deployment grant consumed on first use.
+ *
+ * Grants are scoped to one address and expire after a few minutes, which limits
+ * the blast radius of a leaked one. Making them single-use closes the remaining
+ * window: a grant captured in transit can no longer be replayed for the rest of
+ * its TTL. The primary key is the sha256 of the raw grant string — the same
+ * function used everywhere else in this codebase to avoid storing secrets in
+ * plaintext.
+ */
+export const usedGrants = sqliteTable('used_grants', {
+  grantHash: text('grant_hash').primaryKey(),
+  usedAt: text('used_at').notNull(),
+});
+
 export type AgentRow = typeof agents.$inferSelect;
 export type AgentCommandRow = typeof agentCommands.$inferSelect;
 export type DiscoveredHostRow = typeof discoveredHosts.$inferSelect;
 export type FleetSettingRow = typeof fleetSettings.$inferSelect;
+export type UsedGrantRow = typeof usedGrants.$inferSelect;

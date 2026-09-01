@@ -128,7 +128,7 @@ describe('enrolment', () => {
     const other = await startPanel();
     try {
       const agent = await Agent.started(panel);
-      const stolenGrant = 'g1.9999999999999.10.0.0.9.deadbeef';
+      const stolenGrant = 'g1|9999999999999|10.0.0.9|deadbeef';
       const response = await fetch(`${other.url}/api/agent/enrol`, {
         method: 'POST',
         headers: {
@@ -148,5 +148,86 @@ describe('enrolment', () => {
     } finally {
       await other.close();
     }
+  });
+});
+
+describe('single-use deployment grants', () => {
+  let panel: Panel;
+
+  beforeEach(async () => {
+    panel = await startPanel();
+  });
+  afterEach(async () => {
+    await panel.close();
+  });
+
+  /**
+   * A grant is scoped to one address and expires after a few minutes, but the
+   * original design left it reusable within that window. These tests assert the
+   * new single-use behaviour: the first enrolment succeeds, the second with the
+   * same grant is rejected regardless of which machine presents it.
+   */
+  it('accepts a valid grant exactly once', async () => {
+    // Mint a grant for any address; in a test environment without TRUST_PROXY
+    // the panel sees no source IP, so the address-match check is skipped and
+    // the only things that matter are the signature and the single-use record.
+    const grant = panel.grantFor('127.0.0.1');
+
+    const first = await fetch(`${panel.url}/api/agent/enrol`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        [ENROLMENT_HEADER]: grant,
+      },
+      body: JSON.stringify({
+        hostname: 'target',
+        os: 'linux',
+        arch: 'x64',
+        agentVersion: '0.0.0',
+        machineId: 'grant-target-1',
+      }),
+    });
+    expect(first.ok).toBe(true);
+    const { agentId } = (await first.json()) as { agentId: string };
+    expect(agentId).toBeTruthy();
+  });
+
+  it('rejects a grant presented a second time', async () => {
+    const grant = panel.grantFor('127.0.0.1');
+
+    // First use enrols successfully.
+    const first = await fetch(`${panel.url}/api/agent/enrol`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        [ENROLMENT_HEADER]: grant,
+      },
+      body: JSON.stringify({
+        hostname: 'target',
+        os: 'linux',
+        arch: 'x64',
+        agentVersion: '0.0.0',
+        machineId: 'grant-replay-1',
+      }),
+    });
+    expect(first.ok).toBe(true);
+
+    // Second use with the same grant — different machineId, same credential.
+    // A leaked grant must not be usable by anyone who picks it up.
+    const second = await fetch(`${panel.url}/api/agent/enrol`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        [ENROLMENT_HEADER]: grant,
+      },
+      body: JSON.stringify({
+        hostname: 'attacker',
+        os: 'linux',
+        arch: 'x64',
+        agentVersion: '0.0.0',
+        machineId: 'grant-replay-2',
+      }),
+    });
+    expect(second.status).toBe(401);
   });
 });

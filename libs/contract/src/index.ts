@@ -216,6 +216,13 @@ export interface AgentView {
   readonly connected: boolean;
   /** True when the panel has a newer release than this agent is running. */
   readonly updateAvailable: boolean;
+  /**
+   * The agent that deployed this one, when it arrived via a deployment grant.
+   * Null for seed agents and any host enrolled by hand with the shared token.
+   * Together with the discovery record's `foundBy`, this lets the console draw
+   * a "who installed whom" lineage tree across the fleet.
+   */
+  readonly installedBy: string | null;
 }
 
 /** A queued intent and where it got to, never a result. */

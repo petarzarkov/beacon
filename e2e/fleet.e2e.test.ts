@@ -128,3 +128,80 @@ describe('a fleet of agents', () => {
     expect((await operator.agents()).length).toBe(3);
   });
 });
+
+describe('fleet fan-out', () => {
+  let panel: Panel;
+  let operator: Operator;
+  let agents: readonly Agent[];
+
+  beforeAll(async () => {
+    panel = await startPanel({ reportIntervalMs: 1000 });
+    operator = await panel.operator();
+    agents = await startFleet(panel, 3);
+  });
+
+  afterAll(async () => {
+    await disposeFleet(agents);
+    await panel.close();
+  });
+
+  /**
+   * Commands issued to every agent at once must each settle independently.
+   * The critical property: one agent's reply must not satisfy another's command
+   * row, and a slow agent must not block the others from settling.
+   */
+  it('settles a command queued to every agent, each independently', async () => {
+    await waitFor(
+      async () => (await operator.agents()).length === 3,
+      'all three agents to appear',
+    );
+
+    // Queue `report` for every agent simultaneously.
+    const queued = await Promise.all(
+      agents.map((agent) => operator.queue(agent.agentId, 'report')),
+    );
+    expect(queued).toHaveLength(3);
+    const ids = new Set(queued.map((c) => c.id));
+    expect(ids.size).toBe(3); // three distinct commands
+
+    // All three must complete within the polling window.
+    await waitFor(async () => {
+      const recent = await operator.commands('recent', 50);
+      return queued.every((q) =>
+        recent.some((c) => c.id === q.id && c.state === 'completed'),
+      );
+    }, 'all three report commands to complete');
+  });
+
+  /**
+   * Removing an agent forgets its row and commands (cascaded). A still-running
+   * agent re-enrols on its next report, giving it a fresh row.
+   */
+  it('removes an agent and its command history from the fleet', async () => {
+    const [target] = agents;
+    if (target === undefined) return;
+
+    // Queue something so we can verify cascade deletion.
+    const queued = await operator.queue(target.agentId, 'report');
+    const targetId = target.agentId;
+
+    // Remove the agent.
+    const result = await operator.remove(targetId);
+    expect(result.deleted).toBe(true);
+
+    // Fleet immediately shrinks.
+    const fleet = await operator.agents();
+    expect(fleet.find((a) => a.id === targetId)).toBeUndefined();
+    expect(fleet.length).toBe(2);
+
+    // Its command row is gone too (cascaded).
+    const commands = await operator.commands('recent', 100);
+    expect(commands.find((c) => c.id === queued.id)).toBeUndefined();
+
+    // The agent's process is still running but its token is now invalid, so it
+    // cannot report. It does not re-enrol automatically — it has an identity
+    // file on disk and `#enrol()` returns early when that file exists. A real
+    // operator would restart the agent with a fresh config to force re-enrolment;
+    // that is outside the scope of this test, which covers the cascade effect.
+  });
+});
