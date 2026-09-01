@@ -43,12 +43,12 @@ export const toAgentView = (row: AgentRow, ctx: ViewContext): AgentView => ({
   lastSeenAt: row.lastSeenAt,
   lastIp: row.lastIp,
   uptimeSeconds: row.uptimeSeconds,
-  // Null until the first report lands. An agent that has enrolled and not yet
-  // reported is a state the console should show as such, not as a host with
-  // zero memory.
-  load1: row.lastReport?.load1 ?? null,
-  memTotalBytes: row.lastReport?.memTotalBytes ?? null,
-  memFreeBytes: row.lastReport?.memFreeBytes ?? null,
+  agentUptimeSeconds: row.agentUptimeSeconds,
+  // The agent's own footprint, not the host's. Null until the first report, and
+  // `0` (an old agent that does not send it) reads as unknown too - a live
+  // process is never actually at zero RSS.
+  agentMemBytes: row.lastReport?.agentMemBytes || null,
+  agentCpuPercent: row.lastReport?.agentCpuPercent ?? null,
   reportedAt: row.lastReport?.collectedAt ?? null,
   connected: ctx.now - Date.parse(row.lastSeenAt) < ctx.offlineAfterMs,
   updateAvailable:

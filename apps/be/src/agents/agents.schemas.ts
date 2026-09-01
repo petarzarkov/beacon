@@ -23,6 +23,13 @@ export const hostReport = z
     load1: z.number().min(0),
     memTotalBytes: z.number().int().min(0),
     memFreeBytes: z.number().int().min(0),
+    // Defaulted, so a new panel still accepts an agent that has not updated to
+    // send it yet - an old agent must be able to report in order to collect the
+    // update that teaches it to. The view reads 0 as "unknown".
+    agentMemBytes: z.number().int().min(0).default(0),
+    // Nullable and defaulted for the same reason, plus: the first report of a
+    // process has no prior sample to rate against.
+    agentCpuPercent: z.number().min(0).nullable().default(null),
     collectedAt: z.iso.datetime(),
   })
   .meta({ id: 'HostReport', description: 'One host, as its agent sees it' });

@@ -24,6 +24,14 @@ export type { HostReport };
 export class ProbeService {
   constructor(private readonly config: AgentConfigService) {}
 
+  /**
+   * The previous CPU sample, so a report can express usage as a rate. A rate
+   * needs two points, so the first `collect()` returns null and only records the
+   * baseline; every one after diffs against the last. Held on the service, which
+   * lives for the whole `run` process, so the sampling spans the report loop.
+   */
+  #lastCpu: { at: number; usage: NodeJS.CpuUsage } | null = null;
+
   collect(): HostReport {
     return {
       agentVersion: this.config.get('version'),
@@ -43,7 +51,36 @@ export class ProbeService {
       load1: loadavg()[0] ?? 0,
       memTotalBytes: totalmem(),
       memFreeBytes: freemem(),
+      // The agent's own footprint, which is what an operator actually wants of a
+      // fleet of agents - the host totals above are the machine, not this process.
+      agentMemBytes: process.memoryUsage().rss,
+      agentCpuPercent: this.#cpuPercent(),
       collectedAt: new Date().toISOString(),
     };
+  }
+
+  /**
+   * The agent process's CPU since the last sample, as a percent of one core.
+   *
+   * `process.cpuUsage()` is cumulative microseconds, so the rate is the delta
+   * over the wall-clock delta. Null on the first call: there is nothing to
+   * difference against yet, and reporting 0 would be a claim rather than an
+   * absence.
+   */
+  #cpuPercent(): number | null {
+    const at = performance.now();
+    const usage = process.cpuUsage();
+    const previous = this.#lastCpu;
+    this.#lastCpu = { at, usage };
+    if (previous === null) return null;
+
+    const wallMs = at - previous.at;
+    if (wallMs <= 0) return null;
+    const cpuMs =
+      (usage.user -
+        previous.usage.user +
+        (usage.system - previous.usage.system)) /
+      1000;
+    return Math.round((cpuMs / wallMs) * 1000) / 10;
   }
 }

@@ -19,6 +19,8 @@ describe('ProbeService', () => {
       expect(report.hostname.length).toBeGreaterThan(0);
       expect(report.agentVersion).toMatch(/^\d+\.\d+\.\d+$/);
       expect(report.memTotalBytes).toBeGreaterThan(report.memFreeBytes);
+      // The agent's own footprint, the honest per-process stat the console shows.
+      expect(report.agentMemBytes).toBeGreaterThan(0);
       expect(() => JSON.parse(JSON.stringify(report))).not.toThrow();
     } finally {
       await app.shutdown();

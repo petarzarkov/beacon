@@ -111,7 +111,7 @@ describe('a fleet of agents', () => {
     expect(row.hostname.length).toBeGreaterThan(0);
     expect(row.lastSeenAt).toBeTruthy();
     // It reported at least once before it died, so the report fields are real.
-    expect(row.memTotalBytes).toBeGreaterThan(0);
+    expect(row.agentMemBytes).toBeGreaterThan(0);
   });
 
   it('comes back connected when the host returns', async () => {

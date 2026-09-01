@@ -87,9 +87,9 @@ describe('the console (browser)', () => {
       await page.getByRole('heading', { name: hostname() }).waitFor();
       expect(page.url()).toContain(`/agents/${agent.agentId}`);
 
-      // The detail the table cannot show: full state, its lifecycle activity
-      // (the agent reported a startup), and its command history.
-      await page.getByText('Host uptime').waitFor();
+      // The detail the table cannot show: the agent's own stats (not the host's),
+      // its lifecycle activity (a real startup), and its command history.
+      await page.getByText('Agent memory').waitFor();
       await page.getByText('Activity').waitFor();
       await page.getByText('startup').waitFor();
       await page.getByText('Command history').waitFor();

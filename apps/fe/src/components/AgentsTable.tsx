@@ -3,7 +3,6 @@ import {
   Anchor,
   Badge,
   Group,
-  Progress,
   Stack,
   Table,
   Text,
@@ -28,7 +27,7 @@ import {
   type QueueableCommand,
 } from '../api/agents';
 import { Link } from 'react-router';
-import { memoryUsed, relativeTime } from '../lib/format';
+import { bytes, relativeTime } from '../lib/format';
 import { CommandBadge } from './CommandBadge';
 
 const CONTROLS: readonly {
@@ -47,28 +46,12 @@ const StateBadge = ({ agent }: { agent: AgentView }): React.ReactElement => (
   </Badge>
 );
 
-const Memory = ({ agent }: { agent: AgentView }): React.ReactElement => {
-  const used = memoryUsed(agent.memTotalBytes, agent.memFreeBytes);
-  if (used === null) {
-    return (
-      <Text c="dimmed" size="sm">
-        —
-      </Text>
-    );
-  }
-  return (
-    <Stack gap={2} w={90}>
-      <Progress
-        value={used * 100}
-        color={used > 0.9 ? 'red' : used > 0.75 ? 'yellow' : 'blue'}
-        size="sm"
-      />
-      <Text size="xs" c="dimmed">
-        {Math.round(used * 100)}%
-      </Text>
-    </Stack>
-  );
-};
+/** The agent process's own resident memory, not the host's. */
+const Memory = ({ agent }: { agent: AgentView }): React.ReactElement => (
+  <Text size="sm" c={agent.agentMemBytes === null ? 'dimmed' : undefined}>
+    {agent.agentMemBytes === null ? '—' : bytes(agent.agentMemBytes)}
+  </Text>
+);
 
 export const AgentsTable = (): React.ReactElement => {
   const agents = useAgents();
@@ -151,12 +134,12 @@ export const AgentsTable = (): React.ReactElement => {
           <Memory agent={agent} />
         </Table.Td>
         <Table.Td>
-          {agent.load1 === null ? (
+          {agent.agentCpuPercent === null ? (
             <Text c="dimmed" size="sm">
               —
             </Text>
           ) : (
-            <Text size="sm">{agent.load1.toFixed(2)}</Text>
+            <Text size="sm">{agent.agentCpuPercent.toFixed(1)}%</Text>
           )}
         </Table.Td>
         <Table.Td>
@@ -218,8 +201,8 @@ export const AgentsTable = (): React.ReactElement => {
             <Table.Th>State</Table.Th>
             <Table.Th>Version</Table.Th>
             <Table.Th>Last report</Table.Th>
-            <Table.Th>Memory</Table.Th>
-            <Table.Th>Load</Table.Th>
+            <Table.Th>Agent memory</Table.Th>
+            <Table.Th>Agent CPU</Table.Th>
             <Table.Th>Outstanding</Table.Th>
             <Table.Th ta="right">Controls</Table.Th>
           </Table.Tr>

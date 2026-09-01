@@ -57,6 +57,18 @@ export interface HostReport {
   readonly load1: number;
   readonly memTotalBytes: number;
   readonly memFreeBytes: number;
+  /**
+   * The agent process's own resident memory (RSS) - the honest answer to "what
+   * is the agent using", as against the host totals above, which describe the
+   * whole machine and dwarf it.
+   */
+  readonly agentMemBytes: number;
+  /**
+   * The agent process's CPU use since the last report, as a percent of one core.
+   * Null on the first report, when there is no earlier sample to difference
+   * against - a rate needs two points, and the first is only the baseline.
+   */
+  readonly agentCpuPercent: number | null;
   readonly collectedAt: string;
 }
 
@@ -239,11 +251,19 @@ export interface AgentView {
   readonly enrolledAt: string;
   readonly lastSeenAt: string;
   readonly lastIp: string | null;
+  /** The host's uptime. See `agentUptimeSeconds` for the agent process's own. */
   readonly uptimeSeconds: number;
-  /** Null until the first report: an enrolled agent has not necessarily spoken yet. */
-  readonly load1: number | null;
-  readonly memTotalBytes: number | null;
-  readonly memFreeBytes: number | null;
+  /** The agent process's own uptime, distinct from the host it runs on. */
+  readonly agentUptimeSeconds: number;
+  /**
+   * The agent process's own resident memory (RSS), not the host's - what the
+   * console shows, because an operator watching a fleet of agents wants to know
+   * what the agent costs, not that the box it sits on has 63 GB. Null until the
+   * first report.
+   */
+  readonly agentMemBytes: number | null;
+  /** The agent process's CPU since the last report, percent of one core. Null until two reports. */
+  readonly agentCpuPercent: number | null;
   readonly reportedAt: string | null;
   /** Derived from `lastSeenAt`, never stored. */
   readonly connected: boolean;

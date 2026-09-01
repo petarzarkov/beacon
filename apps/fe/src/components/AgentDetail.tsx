@@ -36,7 +36,7 @@ import {
   type AgentEventView,
   type QueueableCommand,
 } from '../api/agents';
-import { bytes, duration, memoryUsed, relativeTime } from '../lib/format';
+import { bytes, duration, relativeTime } from '../lib/format';
 import { CommandBadge } from './CommandBadge';
 
 const CONTROLS: readonly {
@@ -192,7 +192,6 @@ export const AgentDetail = ({
   }
 
   const it = agent.data;
-  const used = memoryUsed(it.memTotalBytes, it.memFreeBytes);
   const rows = (history.data ?? []).filter((c) => c.agentId === agentId);
 
   return (
@@ -264,14 +263,14 @@ export const AgentDetail = ({
           <Field label="Last report">{relativeTime(it.reportedAt)}</Field>
           <Field label="Last seen">{relativeTime(it.lastSeenAt)}</Field>
           <Field label="Enrolled">{relativeTime(it.enrolledAt)}</Field>
-          <Field label="Host uptime">{duration(it.uptimeSeconds)}</Field>
-          <Field label="Load (1m)">
-            {it.load1 === null ? '—' : it.load1.toFixed(2)}
+          <Field label="Agent uptime">{duration(it.agentUptimeSeconds)}</Field>
+          <Field label="Agent memory">
+            {it.agentMemBytes === null ? '—' : bytes(it.agentMemBytes)}
           </Field>
-          <Field label="Memory">
-            {used === null
+          <Field label="Agent CPU">
+            {it.agentCpuPercent === null
               ? '—'
-              : `${Math.round(used * 100)}% of ${bytes(it.memTotalBytes)}`}
+              : `${it.agentCpuPercent.toFixed(1)}%`}
           </Field>
           <Field label="Address">{it.lastIp ?? '—'}</Field>
           <Field label="Agent version">{it.agentVersion}</Field>
