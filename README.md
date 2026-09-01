@@ -32,12 +32,12 @@ bun run dev            # the panel
 bun run build:agent    # compile the agent, publish it to the panel's release dir
 ```
 
-The agent binary is about 79 MB and lands in `apps/panel/data/agent/` with a
+The agent binary is about 79 MB and lands in `apps/be/data/agent/` with a
 `manifest.json` carrying its version and sha256. Both are gitignored.
 
 ```bash
-./apps/panel/data/agent/dunxon-agent version
-./apps/panel/data/agent/dunxon-agent probe
+./apps/be/data/agent/dunxon-agent version
+./apps/be/data/agent/dunxon-agent probe
 ```
 
 ## Where this is

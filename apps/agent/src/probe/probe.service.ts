@@ -7,7 +7,10 @@ import {
   totalmem,
   uptime,
 } from 'node:os';
+import type { HostReport } from '@be/agents/agent.contract.js';
 import { AgentConfigService } from '../config/settings.js';
+
+export type { HostReport };
 
 /**
  * What one host reports. Small and machine-neutral on purpose: this is the
@@ -18,28 +21,25 @@ import { AgentConfigService } from '../config/settings.js';
  * script the panel owns and ships the raw stdout, so the panel and the agent
  * cannot disagree about what a field means. Keep that property when this grows.
  */
-export interface Report {
-  readonly agentVersion: string;
-  readonly hostname: string;
-  readonly os: string;
-  readonly arch: string;
-  readonly uptimeSeconds: number;
-  readonly load1: number;
-  readonly memTotalBytes: number;
-  readonly memFreeBytes: number;
-  readonly collectedAt: string;
-}
-
 export class ProbeService {
   constructor(private readonly config: AgentConfigService) {}
 
-  collect(): Report {
+  collect(): HostReport {
     return {
       agentVersion: this.config.get('version'),
       hostname: hostname(),
       os: release(),
       arch: arch(),
       uptimeSeconds: Math.round(uptime()),
+      /**
+       * The process's own age, and the reason `restart` is observable at all.
+       *
+       * Host uptime cannot answer it - restarting a service does not reboot the
+       * machine - so without this the panel would have no way to tell an agent
+       * that obeyed a restart from one that ignored it, and every restart would
+       * sit `delivered` until its TTL ran out.
+       */
+      agentUptimeSeconds: Math.round(process.uptime()),
       load1: loadavg()[0] ?? 0,
       memTotalBytes: totalmem(),
       memFreeBytes: freemem(),

@@ -1,10 +1,15 @@
 import { ConfigModule, Module } from '@dunx/core';
 import type { ConfigSource } from '@dunx/core';
+import { LoggerModule, StreamTransport } from '@dunx/infra/logger';
+import { IdentityStore } from './config/identity.js';
 import { AgentConfigService, validate } from './config/settings.js';
 import { InstallService } from './install/install.service.js';
 import { PanelClient } from './panel/panel-client.js';
 import { ProbeService } from './probe/probe.service.js';
-import { ProvisionService } from './provision/provision.service.js';
+import { DeployService } from './provision/deploy.service.js';
+import { DiscoverService } from './provision/discover.service.js';
+import { PropagateService } from './provision/propagate.service.js';
+import { RunnerService } from './run/runner.service.js';
 import { UpdateService } from './update/update.service.js';
 
 /**
@@ -17,13 +22,42 @@ import { UpdateService } from './update/update.service.js';
  * precedence lives.
  */
 @Module({
-  imports: [],
+  imports: [
+    /**
+     * Everything to stderr, deliberately.
+     *
+     * The default console transport splits info to stdout and warnings to
+     * stderr, but this binary is a CLI as much as a service: `probe`,
+     * `discover`, `whoami` and `propagate --dry-run` each print JSON on stdout
+     * that a caller parses, and a log line landing there would corrupt it. A
+     * single stream transport to stderr keeps stdout for output alone, which is
+     * the Unix convention and also what makes those commands scriptable.
+     *
+     * Under systemd both streams reach journald anyway, so nothing is lost.
+     */
+    LoggerModule.forRootAsync({
+      useFactory: (config: AgentConfigService) => ({
+        name: 'dunxon-agent',
+        level: config.get('logLevel'),
+        transports: [
+          new StreamTransport(process.stderr, {
+            level: config.get('logLevel'),
+          }),
+        ],
+      }),
+      inject: [AgentConfigService] as const,
+    }),
+  ],
   providers: [
+    IdentityStore,
     ProbeService,
     PanelClient,
+    RunnerService,
     UpdateService,
     InstallService,
-    ProvisionService,
+    DiscoverService,
+    DeployService,
+    PropagateService,
   ],
 })
 export class AgentModule {

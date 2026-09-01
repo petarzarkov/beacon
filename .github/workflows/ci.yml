@@ -31,6 +31,13 @@ jobs:
         run: bun run test
 
       # Proves the agent still compiles to a single executable, which is the one
-      # thing about this repo that a normal typecheck cannot tell you.
+      # thing about this repo that a normal typecheck cannot tell you. Ahead of
+      # the e2e suite because that serves this binary as a published release.
       - name: Build the agent
         run: bun run build:agent
+
+      # A real panel and real agent processes, end to end: enrolment, the command
+      # lifecycle including a live restart, release distribution, discovery and
+      # deployment. Last, because it is the slowest and depends on the build.
+      - name: End-to-end
+        run: bun run test:e2e

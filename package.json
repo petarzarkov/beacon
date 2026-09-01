@@ -4,25 +4,29 @@
   "private": true,
   "description": "Control plane for a fleet of self-updating agents: the panel installs them, they report in, it serves their updates.",
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "e2e"
   ],
   "type": "module",
   "scripts": {
     "prepare": "husky || true",
     "dev": "bun run --parallel --filter '*' dev",
     "dev:agent": "bun run --filter dunxon-agent dev",
-    "start": "bun run --filter dunxon-panel start",
+    "start": "bun run --filter dunxon-be start",
     "build": "bun run --parallel --filter '*' build",
     "build:agent": "bun run --filter dunxon-agent build",
     "typecheck": "bun run --parallel --filter '*' typecheck",
-    "lint": "oxlint --type-aware --fix apps/panel/src apps/agent/src apps/agent/scripts apps/fe/src",
-    "lint:check": "oxlint --type-aware --max-warnings 0 apps/panel/src apps/agent/src apps/agent/scripts apps/fe/src",
+    "lint": "oxlint --type-aware --fix apps/be/src apps/be/scripts apps/agent/src apps/agent/scripts apps/fe/src e2e",
+    "lint:check": "oxlint --type-aware --max-warnings 0 apps/be/src apps/be/scripts apps/agent/src apps/agent/scripts apps/fe/src e2e",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "test": "bun run --filter '*' test",
-    "dev:panel": "bun run --filter dunxon-panel dev",
+    "test": "bun run --filter dunxon-be --filter dunxon-agent test",
+    "dev:be": "bun run --filter dunxon-be dev",
     "dev:fe": "bun run --filter dunxon-fe dev",
-    "build:fe": "bun run --filter dunxon-fe build"
+    "build:fe": "bun run --filter dunxon-fe build",
+    "create:admin": "bun run --filter dunxon-be create:admin",
+    "build:be": "bun run --filter dunxon-be build",
+    "test:e2e": "bun run --filter dunxon-e2e test"
   },
   "devDependencies": {
     "@types/bun": "1.4.0",

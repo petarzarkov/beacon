@@ -1,0 +1,5 @@
+# The panel boots in-process here, and its providers use constructor injection -
+# so the suite needs the same compiler plugin the app does. Without it every
+# provider is built with no arguments and the first `startPanel` fails at boot.
+[test]
+preload = ["@dunx/transform/preload"]

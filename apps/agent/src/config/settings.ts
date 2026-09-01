@@ -1,14 +1,45 @@
-import { ConfigService, type ConfigSource } from '@dunx/core';
+import { ConfigService, type ConfigSource, LogLevel } from '@dunx/core';
 import { z } from 'zod';
 import pkg from '../../package.json';
 
+/**
+ * Single source of truth for the version, inlined by the bundler at compile
+ * time. Bun resolves `process.env` at runtime inside a compiled binary and
+ * ignores `--define` entirely, so a JSON import is the only stamping that
+ * survives `bun build --compile`.
+ */
 export const AGENT_VERSION: string = pkg.version;
 
-/** Mode `0600`, because it holds the token. Written by `install`. */
-export const CONFIG_PATH = '/etc/dunxon-agent/agent.conf';
+export const SERVICE_NAME = 'dunxon-agent';
+
+/** Mode `0600`, because it holds the enrolment token. Written by `install`. */
+export const CONFIG_PATH = `/etc/${SERVICE_NAME}/agent.conf`;
+
+/** Where `install` puts the binary, and therefore what an update replaces. */
+export const INSTALL_PATH = `/usr/local/bin/${SERVICE_NAME}`;
+
+export const UNIT_PATH = `/etc/systemd/system/${SERVICE_NAME}.service`;
+export const UPDATE_SERVICE_NAME = `${SERVICE_NAME}-update.service`;
+export const UPDATE_TIMER_NAME = `${SERVICE_NAME}-update.timer`;
+export const UPDATE_SERVICE_PATH = `/etc/systemd/system/${UPDATE_SERVICE_NAME}`;
+export const UPDATE_TIMER_PATH = `/etc/systemd/system/${UPDATE_TIMER_NAME}`;
+
+/** The unix user the service runs as. Not root - see `install.service.ts`. */
+export const DEFAULT_RUN_USER = 'dunxon';
 
 const schema = z.object({
-  PANEL_URL: z.string().url().optional(),
+  /**
+   * All diagnostics go to stderr (see `agent.module.ts`), so stdout is left for
+   * a command's own output - `probe`, `discover` and `propagate --dry-run` each
+   * print JSON that must parse. This only sets how much of it is emitted.
+   */
+  LOG_LEVEL: z.enum(LogLevel).default(LogLevel.INFO),
+  PANEL_URL: z.url().optional(),
+  /**
+   * The fleet-wide enrolment token, used exactly once. After enrolment the agent
+   * holds its own token instead and this is no longer consulted, which is why
+   * losing it does not strand a running agent.
+   */
   AGENT_TOKEN: z.string().min(1).optional(),
   /** How often to report when the panel has not said otherwise. */
   REPORT_INTERVAL_MS: z.coerce.number().int().min(1000).default(30_000),
@@ -18,14 +49,73 @@ const schema = z.object({
     .int()
     .min(60_000)
     .default(6 * 3600_000),
+  /**
+   * Where the identity issued at enrolment is kept. Unset means the default
+   * chain in `identity.ts`, which is what lets the agent run as a service and
+   * also run from a checkout with no root.
+   */
+  AGENT_STATE_FILE: z.string().optional(),
+  /** Per-request budget when talking to the panel. */
+  PANEL_TIMEOUT_MS: z.coerce.number().int().min(1000).default(20_000),
+  /**
+   * Overrides the identity read from `/etc/machine-id`.
+   *
+   * Needed wherever that value is not unique per agent, which is more common
+   * than it sounds: containers built from one image share it, and so does every
+   * agent in the end-to-end suite, which runs a whole fleet on one host. Without
+   * an override they would all enrol onto a single row.
+   */
+  AGENT_MACHINE_ID: z.string().min(1).optional(),
+
+  /**
+   * Self-propagation: sweep the subnet and install the agent onto neighbours,
+   * with no panel in the loop. **Off by default, and deliberately so.**
+   *
+   * This is the one thing in the system that holds a standing credential - the
+   * SSH key or password below, which works across the fleet - so a stolen agent
+   * becomes a way into its neighbours. That is exactly what the panel-brokered
+   * `deploy` path avoids by having the operator supply a credential per install.
+   * Turning this on trades that safety for a fleet that assembles itself from one
+   * seeded host, which is the right trade only for a homogeneous fleet an
+   * operator fully owns. See `docs/architecture.md`.
+   */
+  AGENT_PROPAGATE: z.stringbool().default(false),
+  /** The login to install as on a neighbour. */
+  AGENT_PROPAGATE_USER: z.string().min(1).optional(),
+  /** A private key (inline PEM or a path), used to reach neighbours. */
+  AGENT_PROPAGATE_KEY: z.string().min(1).optional(),
+  /** A password, the alternative to a key. Needs `sshpass` on this host. */
+  AGENT_PROPAGATE_PASSWORD: z.string().min(1).optional(),
+  AGENT_PROPAGATE_PORT: z.coerce.number().int().min(1).max(65535).default(22),
+  /** How often to sweep and spread. Slow: this is background colonisation. */
+  AGENT_PROPAGATE_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .min(10_000)
+    .default(300_000),
+  /** The URL a *neighbour* can reach the panel on, which this host cannot infer for it. */
+  AGENT_PROPAGATE_PANEL_URL: z.url().optional(),
 });
 
 export interface AgentConfig {
   readonly version: string;
+  readonly logLevel: LogLevel;
   readonly panelUrl: string | undefined;
   readonly token: string | undefined;
   readonly reportIntervalMs: number;
   readonly updateIntervalMs: number;
+  readonly stateFile: string | undefined;
+  readonly panelTimeoutMs: number;
+  readonly machineId: string | undefined;
+  readonly propagate: {
+    readonly enabled: boolean;
+    readonly user: string | undefined;
+    readonly key: string | undefined;
+    readonly password: string | undefined;
+    readonly port: number;
+    readonly intervalMs: number;
+    readonly panelUrl: string | undefined;
+  };
 }
 
 /**
@@ -35,15 +125,30 @@ export interface AgentConfig {
  */
 export class AgentConfigService extends ConfigService<AgentConfig> {
   /** Throws rather than reporting nowhere, which is the failure worth being loud about. */
-  requirePanel(): { panelUrl: string; token: string } {
+  requirePanelUrl(): string {
     const panelUrl = this.get('panelUrl');
-    const token = this.get('token');
-    if (!panelUrl || !token) {
+    if (panelUrl === undefined) {
       throw new Error(
-        `No panel URL or token. Pass --panel-url and --token, set PANEL_URL / AGENT_TOKEN, or run \`install\` to write ${CONFIG_PATH}.`,
+        `No panel URL. Pass --panel-url, set PANEL_URL, or run \`install\` to write ${CONFIG_PATH}.`,
       );
     }
-    return { panelUrl, token };
+    return panelUrl.replace(/\/+$/, '');
+  }
+
+  /**
+   * The enrolment token, needed only until the agent has an identity of its own.
+   * Separate from `requirePanelUrl` because an enrolled agent has a panel URL and
+   * no use for this one, and demanding both would strand it if the shared token
+   * were rotated.
+   */
+  requireEnrolmentToken(): string {
+    const token = this.get('token');
+    if (token === undefined) {
+      throw new Error(
+        `No enrolment token. Pass --token, set AGENT_TOKEN, or run \`install\` to write ${CONFIG_PATH}.`,
+      );
+    }
+    return token;
   }
 }
 
@@ -58,9 +163,22 @@ export const validate = (env: ConfigSource): AgentConfig => {
   const v = parsed.data;
   return {
     version: AGENT_VERSION,
+    logLevel: v.LOG_LEVEL,
     panelUrl: v.PANEL_URL,
     token: v.AGENT_TOKEN,
     reportIntervalMs: v.REPORT_INTERVAL_MS,
     updateIntervalMs: v.UPDATE_INTERVAL_MS,
+    stateFile: v.AGENT_STATE_FILE,
+    panelTimeoutMs: v.PANEL_TIMEOUT_MS,
+    machineId: v.AGENT_MACHINE_ID,
+    propagate: {
+      enabled: v.AGENT_PROPAGATE,
+      user: v.AGENT_PROPAGATE_USER,
+      key: v.AGENT_PROPAGATE_KEY,
+      password: v.AGENT_PROPAGATE_PASSWORD,
+      port: v.AGENT_PROPAGATE_PORT,
+      intervalMs: v.AGENT_PROPAGATE_INTERVAL_MS,
+      panelUrl: v.AGENT_PROPAGATE_PANEL_URL,
+    },
   };
 };

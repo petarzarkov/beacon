@@ -1,0 +1,26 @@
+{
+  "name": "dunxon-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "End-to-end tests: a real panel, real agent processes, and the built console.",
+  "type": "module",
+  "scripts": {
+    "test": "bun test --timeout 120000",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@dunx/auth": "^3.1.3",
+    "@dunx/core": "^3.1.3",
+    "@dunx/http": "^3.1.3",
+    "@dunx/infra": "^3.1.3",
+    "@dunx/openapi": "^3.1.3",
+    "@dunx/transform": "^3.1.3",
+    "better-auth": "^1.6.25",
+    "drizzle-orm": "^0.45.2",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "typescript": "7.0.2"
+  }
+}

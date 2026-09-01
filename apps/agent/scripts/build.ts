@@ -32,7 +32,7 @@ const BINARY_NAME = 'dunxon-agent';
 
 /** Mirrors AGENT_RELEASE_DIR on the panel. */
 const releaseDir =
-  process.env['AGENT_RELEASE_DIR'] ?? resolve(AGENT_DIR, '../panel/data/agent');
+  process.env['AGENT_RELEASE_DIR'] ?? resolve(AGENT_DIR, '../be/data/agent');
 
 // The binary reads this same package.json through a bundled JSON import, so the
 // version in the manifest and the version the agent reports cannot disagree.

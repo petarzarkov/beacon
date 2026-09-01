@@ -1,19 +1,22 @@
 import { Logger } from '@dunx/core';
-import { AgentConfigService } from '../config/settings.js';
+import { chmodSync, renameSync, unlinkSync } from 'node:fs';
+import {
+  AgentConfigService,
+  INSTALL_PATH,
+  SERVICE_NAME,
+  UPDATE_SERVICE_NAME,
+} from '../config/settings.js';
 import { PanelClient } from '../panel/panel-client.js';
-
-/** Where `install` puts the binary, and therefore what an update replaces. */
-export const INSTALL_PATH = '/usr/local/bin/dunxon-agent';
 
 /**
  * Self-update: ask what is published, verify it, swap it in.
  *
- * The hash check is the point. Without it an update is a blind overwrite of the
- * one binary that manages the host, and the panel is then a single place from
- * which every machine can be replaced.
+ * **The hash check is the point.** Without it an update is a blind overwrite of
+ * the one binary that manages the host, and the panel becomes a single place
+ * from which every machine in the fleet can be replaced with anything.
  *
- * This runs as root from a companion timer rather than from the service, because
- * the service runs unprivileged and cannot write to `/usr/local/bin`.
+ * This runs as root from the companion timer rather than from the service,
+ * because the service runs unprivileged and cannot write to `/usr/local/bin`.
  */
 export class UpdateService {
   constructor(
@@ -22,7 +25,42 @@ export class UpdateService {
     private readonly logger: Logger,
   ) {}
 
-  /** `true` when a newer release was installed. */
+  /**
+   * What the running service does when an operator queues `update`.
+   *
+   * It cannot do the update itself: it runs as an unprivileged user precisely so
+   * that it cannot write to `/usr/local/bin`. So it asks the root oneshot unit
+   * that exists for this, through the one `sudo` rule `install` grants - a single
+   * `systemctl start` on a single unit, which is a far smaller privilege than
+   * write access to the binary.
+   *
+   * `Type=oneshot` is what makes this reportable: `systemctl start` blocks until
+   * the update has finished, so the exit status is the outcome.
+   */
+  async request(): Promise<string> {
+    if (process.getuid?.() === 0) {
+      // Already root: the CLI path, or a service someone chose to run as root.
+      return (await this.run())
+        ? 'updated and restarting'
+        : 'already on the published version';
+    }
+
+    const result = Bun.spawnSync([
+      'sudo',
+      '-n',
+      'systemctl',
+      'start',
+      UPDATE_SERVICE_NAME,
+    ]);
+    if (!result.success) {
+      throw new Error(
+        `Cannot update: this agent is unprivileged and could not start ${UPDATE_SERVICE_NAME} (${new TextDecoder().decode(result.stderr).trim() || `exit ${result.exitCode}`}). It will update on its own timer.`,
+      );
+    }
+    return `asked ${UPDATE_SERVICE_NAME} to run`;
+  }
+
+  /** `true` when a newer release was installed. Needs root. */
   async run(): Promise<boolean> {
     const manifest = await this.panel.manifest();
     const current = this.config.get('version');
@@ -31,6 +69,7 @@ export class UpdateService {
       return false;
     }
 
+    this.logger.info('updating', { from: current, to: manifest.version });
     const bytes = await this.panel.download();
     const sha256 = new Bun.CryptoHasher('sha256').update(bytes).digest('hex');
     if (sha256 !== manifest.sha256) {
@@ -39,13 +78,49 @@ export class UpdateService {
       );
     }
 
-    // Written beside the target and renamed, so a partial download cannot leave
-    // an unrunnable binary at the path systemd restarts.
+    /**
+     * Staged beside the target and renamed, because `rename(2)` within one
+     * filesystem is atomic: there is no instant at which `INSTALL_PATH` is a
+     * half-written file. Writing in place would mean a dropped connection
+     * leaving an unrunnable binary at exactly the path systemd restarts, on a
+     * host nobody can now reach to fix it.
+     *
+     * The running process keeps its own inode, so this is safe to do live.
+     */
     const staged = `${INSTALL_PATH}.next`;
-    await Bun.write(staged, bytes);
-    await Bun.$`chmod +x ${staged}`.quiet();
-    await Bun.$`mv -f ${staged} ${INSTALL_PATH}`.quiet();
+    try {
+      await Bun.write(staged, bytes);
+      chmodSync(staged, 0o755);
+      renameSync(staged, INSTALL_PATH);
+    } catch (error) {
+      try {
+        unlinkSync(staged);
+      } catch {
+        // Nothing was staged.
+      }
+      throw error;
+    }
+
     this.logger.info('updated', { from: current, to: manifest.version });
+    // systemd owns the lifecycle, so a clean restart is the one path already
+    // known to work - `exec`ing the new binary in place would leave systemd
+    // tracking a process it did not start.
+    this.#restartService();
     return true;
+  }
+
+  #restartService(): void {
+    const result = Bun.spawnSync(['systemctl', 'restart', SERVICE_NAME], {
+      stdout: 'inherit',
+      stderr: 'inherit',
+    });
+    if (!result.success) {
+      // Not fatal. The binary on disk is already the new one, so the next
+      // restart for any reason picks it up; saying so beats failing an update
+      // that in every other respect succeeded.
+      this.logger.warn(
+        `installed, but could not restart ${SERVICE_NAME} - it will come up on the next restart`,
+      );
+    }
   }
 }
