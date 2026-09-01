@@ -9,13 +9,10 @@ import type {
   DeployPayload,
   DiscoverPayload,
   HostReport,
-} from './agent.contract.js';
+} from '@dunxon/contract';
 import { AgentsRepository, type AgentRow } from './agents.repository.js';
-import type {
-  CommandView,
-  deployRoute,
-  discoverRoute,
-} from './agents.schemas.js';
+import type { CommandView } from '@dunxon/contract';
+import type { deployRoute, discoverRoute } from './agents.schemas.js';
 import { toCommandView } from './agents.views.js';
 import { mintGrant } from './enrolment.js';
 import { ReleasesService } from './releases.service.js';

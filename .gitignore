@@ -49,3 +49,7 @@ docker-compose.override.yml
 *.ntvs*
 *.njsproj
 *.sln
+
+# Machine-local Claude settings and its write-temp files.
+.claude/settings.local.json
+.claude/*.tmp*

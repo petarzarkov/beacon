@@ -3,11 +3,7 @@ import type {
   AgentRow,
   DiscoveredHostRow,
 } from './agents.repository.js';
-import type {
-  AgentView,
-  CommandView,
-  DiscoveryView,
-} from './agents.schemas.js';
+import type { AgentView, CommandView, DiscoveryView } from '@dunxon/contract';
 
 /**
  * Rows to what the console is shown. Separate from the repository because the

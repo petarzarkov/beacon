@@ -5,7 +5,7 @@ import type {
   DeployPayload,
   DiscoverPayload,
   HostReport,
-} from './agent.contract.js';
+} from '@dunxon/contract';
 
 /**
  * An agent, keyed by an id the panel assigns at enrolment rather than by

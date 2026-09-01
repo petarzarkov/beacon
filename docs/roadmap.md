@@ -61,43 +61,47 @@ container is built, for any user; everything else boots the container.
 
 ### Console (`apps/fe`)
 
-Scaffolded: a Mantine + TanStack Query table over the agent API, calling the right
-endpoints. **Not yet usable against the live panel** — see the top near-term item.
+Working end to end. A session gate (`useSession` → login or fleet, no router for
+two screens), then three views:
+
+- **Agents** — the fleet with derived `connected`, version + update flag, memory
+  and load, the outstanding intent per agent (never a tick for the button press),
+  and the controls: report / update / restart / discover / forget.
+- **Commands** — open vs. recent history, each with its state and detail.
+- **Discovered** — swept hosts not yet managed, with a deployment form that takes
+  the credential per install and defaults the callback URL to this origin.
+
+Built into `apps/be/public` (gitignored, generated), served by the panel at one
+origin, so the session cookie is first-party with no CORS in production.
+
+### Shared contract (`libs/contract`)
+
+`@dunxon/contract` — the import-free wire types and constants (headers, command
+vocabulary, report and view shapes) that panel, agent and console all depend on.
+It replaced the old `@be/*` / `@agent/*` source aliases, so nothing reaches into
+another app's `src`; the panel's zod schemas validate into these same shapes.
 
 ### End-to-end (`e2e/`)
 
 An in-process panel on an ephemeral port plus **real agent subprocesses** — the
 only way to test the three things that matter: that `restart` really ends the
 process, that a fresh process reports a fresh uptime, and that an identity on disk
-is found again by a different process. 25 tests across enrolment, the command
-lifecycle, releases, provisioning, and a multi-agent fleet with an offline host.
-`bun run test:e2e`.
+is found again by a different process. 29 tests across enrolment, the command
+lifecycle, releases, provisioning, the console (SPA serving + the auth gate), and
+a multi-agent fleet with an offline host. `bun run test:e2e`. The harness is the
+one place that still boots the backend in-process (`createApp`), which is inherent
+to an in-process suite rather than a cross-import of types.
 
 ## Near-term
 
-### 1. The console, end to end
-
-The API is session-guarded now, so the scaffolded console gets a 401 and cannot
-render. To make it the working front end it is meant to be:
-
-- A **login screen** and a `RequireAuth` boundary; the session cookie is already
-  same-origin in production.
-- Align the table with the richer `AgentView` — `os`/`arch`, load and memory,
-  `updateAvailable`, and the honest `connected` (derived from last-seen, never a
-  stored flag).
-- A **discovered-hosts** view and a **deployment** form: name a target, supply the
-  credential, watch the command settle. The console must show the _state of the
-  intent_, never a tick for having pressed the button.
-- Surface command history and outcomes per agent.
-
-### 2. Prove `install` on a real host
+### 1. Prove `install` on a real host
 
 The systemd path is written but has only been typechecked. It needs one run on a
 real Linux host, as root, to confirm: the unit comes up unprivileged, the update
 timer fires as root, the sudoers rule validates under `visudo -c`, and a
 hand-seeded agent enrols. Until then, treat `install` as unverified.
 
-### 3. Deployment credentials — the decision worth getting right
+### 2. Deployment credentials — the decision worth getting right
 
 `architecture.md` flags this as the most important open question, and the current
 grant (a signed `address|expiry`, minutes long) is the interim answer. What to

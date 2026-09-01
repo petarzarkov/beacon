@@ -4,6 +4,7 @@
   "private": true,
   "description": "Control plane for a fleet of self-updating agents: the panel installs them, they report in, it serves their updates.",
   "workspaces": [
+    "libs/*",
     "apps/*",
     "e2e"
   ],
@@ -16,8 +17,8 @@
     "build": "bun run --parallel --filter '*' build",
     "build:agent": "bun run --filter dunxon-agent build",
     "typecheck": "bun run --parallel --filter '*' typecheck",
-    "lint": "oxlint --type-aware --fix apps/be/src apps/be/scripts apps/agent/src apps/agent/scripts apps/fe/src e2e",
-    "lint:check": "oxlint --type-aware --max-warnings 0 apps/be/src apps/be/scripts apps/agent/src apps/agent/scripts apps/fe/src e2e",
+    "lint": "oxlint --type-aware --fix libs/contract/src apps/be/src apps/be/scripts apps/agent/src apps/agent/scripts apps/fe/src e2e",
+    "lint:check": "oxlint --type-aware --max-warnings 0 libs/contract/src apps/be/src apps/be/scripts apps/agent/src apps/agent/scripts apps/fe/src e2e",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "test": "bun run --filter dunxon-be --filter dunxon-agent test",

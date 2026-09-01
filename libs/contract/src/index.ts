@@ -1,11 +1,16 @@
 /**
- * The wire contract between the panel and an agent, and the one definition of it.
+ * `@dunxon/contract` - the wire contract between panel, agent and console, and
+ * the one definition of it.
  *
- * **This file imports nothing, deliberately.** The agent compiles to a binary and
- * reaches these types through the `@panel/*` alias in its tsconfig; a single
- * import here would drag the panel's container graph into that bundle. Types and
- * string constants only - the zod schemas that validate this on the way in live
- * in `agents.schemas.ts`, panel-side, where zod is already a dependency.
+ * **This package imports nothing, deliberately.** All three apps depend on it,
+ * and the agent compiles to a single binary; a dependency here would drag
+ * whatever it pulled in into that binary and into the browser bundle. So this is
+ * types and string constants only. The panel's zod schemas that *validate* these
+ * on the way in live in `apps/be`, where zod is already a dependency; the shapes
+ * they parse into are the ones declared here, so the two cannot drift.
+ *
+ * It replaces the old cross-package aliases (`@be/*`, `@agent/*`): nothing
+ * reaches into another app's `src` for a type any more.
  */
 
 /** Presented by an enrolled agent on every call. Per-agent, issued at enrolment. */
@@ -173,4 +178,56 @@ export interface DiscoveredHost {
   readonly address: string;
   readonly ports: readonly number[];
   readonly hostname?: string | undefined;
+}
+
+// --- What the console is shown -----------------------------------------------
+// The panel maps its rows to these before serving them. They are not the storage
+// shape: `tokenHash` never leaves the panel, and `connected` is not a column at
+// all - it is derived from `lastSeenAt` on every read, because the panel cannot
+// dial an agent to ask, only notice when one last arrived.
+
+/** A managed host, as the console sees it. */
+export interface AgentView {
+  readonly id: string;
+  readonly hostname: string;
+  readonly agentVersion: string;
+  readonly os: string;
+  readonly arch: string;
+  readonly enrolledAt: string;
+  readonly lastSeenAt: string;
+  readonly lastIp: string | null;
+  readonly uptimeSeconds: number;
+  /** Null until the first report: an enrolled agent has not necessarily spoken yet. */
+  readonly load1: number | null;
+  readonly memTotalBytes: number | null;
+  readonly memFreeBytes: number | null;
+  readonly reportedAt: string | null;
+  /** Derived from `lastSeenAt`, never stored. */
+  readonly connected: boolean;
+  /** True when the panel has a newer release than this agent is running. */
+  readonly updateAvailable: boolean;
+}
+
+/** A queued intent and where it got to, never a result. */
+export interface CommandView {
+  readonly id: string;
+  readonly agentId: string;
+  readonly command: AgentCommandName;
+  readonly state: CommandState;
+  readonly queuedAt: string;
+  readonly expiresAt: string;
+  readonly deliveredAt: string | null;
+  readonly settledAt: string | null;
+  readonly detail: string | null;
+  readonly issuedBy: string | null;
+}
+
+/** A host on a managed subnet that is not managed yet. */
+export interface DiscoveryView {
+  readonly address: string;
+  readonly hostname: string | null;
+  readonly ports: readonly number[];
+  readonly foundBy: string;
+  readonly lastSeenAt: string;
+  readonly enrolledAgentId: string | null;
 }

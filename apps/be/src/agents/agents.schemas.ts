@@ -1,11 +1,12 @@
 import { z } from 'zod';
-import { AGENT_COMMANDS, COMMAND_STATES } from './agent.contract.js';
+import { AGENT_COMMANDS } from '@dunxon/contract';
 
 /**
  * The route schemas, which are also the OpenAPI document. Everything an agent or
  * the console sends is validated here before a service sees it; the types in
- * `agent.contract.ts` describe the same shapes for the binary, which cannot
- * carry zod.
+ * `@dunxon/contract` describes the same shapes for the binary and the console,
+ * which cannot carry zod. The view types live there too, so these schemas do not
+ * restate them.
  */
 
 /** Long enough for a probe that grows, short enough that one host cannot flood the panel. */
@@ -109,65 +110,6 @@ export const releaseManifest = z
   });
 
 /**
- * What the console is shown. `connected` is derived rather than stored - the
- * panel never dials an agent, so the honest question is "did it report
- * recently", and a column would only be a cache of the clock.
- */
-export const agentView = z
-  .object({
-    id: z.string(),
-    hostname: z.string(),
-    agentVersion: z.string(),
-    os: z.string(),
-    arch: z.string(),
-    enrolledAt: z.string(),
-    lastSeenAt: z.string(),
-    lastIp: z.string().nullable(),
-    uptimeSeconds: z.number().int(),
-    /** Null until the first report: an enrolled agent has not necessarily spoken yet. */
-    load1: z.number().nullable(),
-    memTotalBytes: z.number().int().nullable(),
-    memFreeBytes: z.number().int().nullable(),
-    reportedAt: z.string().nullable(),
-    connected: z.boolean(),
-    /** True when the panel has a newer release than this agent is running. */
-    updateAvailable: z.boolean(),
-  })
-  .meta({ id: 'Agent', description: 'A managed host, as the console sees it' });
-
-export const commandView = z
-  .object({
-    id: z.string(),
-    agentId: z.string(),
-    command: z.enum(AGENT_COMMANDS),
-    state: z.enum(COMMAND_STATES),
-    queuedAt: z.string(),
-    expiresAt: z.string(),
-    deliveredAt: z.string().nullable(),
-    settledAt: z.string().nullable(),
-    detail: z.string().nullable(),
-    issuedBy: z.string().nullable(),
-  })
-  .meta({
-    id: 'Command',
-    description: 'A queued intent and where it got to, never a result',
-  });
-
-export const discoveryView = z
-  .object({
-    address: z.string(),
-    hostname: z.string().nullable(),
-    ports: z.array(z.number().int()),
-    foundBy: z.string(),
-    lastSeenAt: z.string(),
-    enrolledAgentId: z.string().nullable(),
-  })
-  .meta({
-    id: 'DiscoveredHost',
-    description: 'A host on a managed subnet that is not managed yet',
-  });
-
-/**
  * Only `report`, `update` and `restart` are queued bare. `discover` takes a
  * subnet and `deploy` takes a credential, so both have routes of their own that
  * can require one.
@@ -234,7 +176,3 @@ export const discoverRoute = {
   }),
 } as const;
 export const deployRoute = { body: deployRequest } as const;
-
-export type AgentView = z.infer<typeof agentView>;
-export type CommandView = z.infer<typeof commandView>;
-export type DiscoveryView = z.infer<typeof discoveryView>;

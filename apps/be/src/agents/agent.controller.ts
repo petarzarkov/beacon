@@ -17,7 +17,7 @@ import {
   type EnrolResponse,
   type ReleaseManifest,
   type ReportResponse,
-} from './agent.contract.js';
+} from '@dunxon/contract';
 import type { AgentRow } from './agents.repository.js';
 import {
   discoveredRoute,

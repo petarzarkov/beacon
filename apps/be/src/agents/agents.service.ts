@@ -8,9 +8,9 @@ import type {
   EnrolResponse,
   HostReport,
   ReportResponse,
-} from './agent.contract.js';
+} from '@dunxon/contract';
 import { AgentsRepository, type AgentRow } from './agents.repository.js';
-import type { AgentView, DiscoveryView } from './agents.schemas.js';
+import type { AgentView, DiscoveryView } from '@dunxon/contract';
 import { toAgentView, toDiscoveryView } from './agents.views.js';
 import { CommandsService } from './commands.service.js';
 import {

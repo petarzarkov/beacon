@@ -36,8 +36,14 @@ jobs:
       - name: Build the agent
         run: bun run build:agent
 
+      # The console is part of the deploy: it builds into the panel's public dir,
+      # and the SPA-serving e2e checks depend on it being there.
+      - name: Build the console
+        run: bun run build:fe
+
       # A real panel and real agent processes, end to end: enrolment, the command
-      # lifecycle including a live restart, release distribution, discovery and
-      # deployment. Last, because it is the slowest and depends on the build.
+      # lifecycle including a live restart, release distribution, discovery,
+      # deployment, and the console the panel serves. Last, because it is the
+      # slowest and depends on both builds.
       - name: End-to-end
         run: bun run test:e2e

@@ -5,7 +5,7 @@ import type {
   CommandOutcome,
   DeployPayload,
   DiscoverPayload,
-} from '@be/agents/agent.contract.js';
+} from '@dunxon/contract';
 import { IdentityStore } from '../config/identity.js';
 import { AgentConfigService } from '../config/settings.js';
 import { PanelClient } from '../panel/panel-client.js';

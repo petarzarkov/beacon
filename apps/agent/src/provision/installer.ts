@@ -2,7 +2,7 @@ import { Logger } from '@dunx/core';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { DeployCredential } from '@be/agents/agent.contract.js';
+import type { DeployCredential } from '@dunxon/contract';
 import { SERVICE_NAME } from '../config/settings.js';
 
 /** One upload plus one install. Generous: the binary is ~80 MB over a LAN. */

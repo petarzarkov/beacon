@@ -1,5 +1,5 @@
 import { Logger } from '@dunx/core';
-import type { DeployPayload } from '@be/agents/agent.contract.js';
+import type { DeployPayload } from '@dunxon/contract';
 import { PanelClient } from '../panel/panel-client.js';
 import { SshInstaller } from './installer.js';
 

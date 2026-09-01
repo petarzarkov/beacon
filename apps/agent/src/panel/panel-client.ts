@@ -9,7 +9,7 @@ import {
   type HostReport,
   type ReleaseManifest,
   type ReportResponse,
-} from '@be/agents/agent.contract.js';
+} from '@dunxon/contract';
 import { AgentConfigService } from '../config/settings.js';
 import { IdentityStore, type Identity } from '../config/identity.js';
 
@@ -18,11 +18,11 @@ export type { ReleaseManifest };
 /**
  * Everything that talks to the panel, so nothing else needs a token.
  *
- * The types come from the panel's own contract module through the `@be/*` alias
- * rather than being restated here. That file imports nothing, which is what lets
- * a compiled binary share it without dragging a DI container into the bundle -
- * and it means a field added panel-side is a type error here rather than a
- * silently dropped value at runtime.
+ * The types come from `@dunxon/contract`, the shared wire package, rather than
+ * being restated here. It imports nothing, which is what lets a compiled binary
+ * share it without dragging a DI container into the bundle - and it means a field
+ * added to the contract is a type error here rather than a silently dropped value
+ * at runtime.
  *
  * **Plain HTTP, and that is the design.** A websocket would give the panel a
  * push channel, but an agent may be at the far end of a link that no proxy will

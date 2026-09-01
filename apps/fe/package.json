@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@dunxon/contract": "workspace:*",
     "@mantine/core": "^8.3.5",
     "@mantine/hooks": "^8.3.5",
     "@mantine/notifications": "^8.3.5",

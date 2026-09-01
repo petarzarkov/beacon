@@ -2,8 +2,8 @@ import type {
   AgentView,
   CommandView,
   DiscoveryView,
-} from '@be/agents/agents.schemas.js';
-import type { ReleaseManifest } from '@be/agents/agent.contract.js';
+  ReleaseManifest,
+} from '@dunxon/contract';
 
 export type { AgentView, CommandView, DiscoveryView };
 

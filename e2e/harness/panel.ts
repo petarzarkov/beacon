@@ -4,10 +4,7 @@ import { join } from 'node:path';
 import type { HttpApp } from '@dunx/http';
 import { createApp } from '@be/main.js';
 import { createOperator } from '@be/auth/create-operator.js';
-import {
-  MANIFEST_FILE,
-  type ReleaseManifest,
-} from '@be/agents/agent.contract.js';
+import { MANIFEST_FILE, type ReleaseManifest } from '@dunxon/contract';
 import { Operator } from './operator.js';
 
 export interface PanelOptions {

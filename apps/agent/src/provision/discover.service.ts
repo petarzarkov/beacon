@@ -2,10 +2,7 @@ import { Logger } from '@dunx/core';
 import { promises as dns } from 'node:dns';
 import { Socket } from 'node:net';
 import { networkInterfaces } from 'node:os';
-import type {
-  DiscoverPayload,
-  DiscoveredHost,
-} from '@be/agents/agent.contract.js';
+import type { DiscoverPayload, DiscoveredHost } from '@dunxon/contract';
 
 /** Ports that mean "a machine, not a printer". Overridable per sweep. */
 const DEFAULT_PORTS = [22] as const;

@@ -6,14 +6,6 @@ const PANEL_PORT = process.env['PANEL_PORT'] ?? '3000';
 
 export default defineConfig({
   plugins: [react()],
-  resolve: {
-    alias: {
-      // The panel's wire contract, which imports nothing - so the console and
-      // the agent share one definition of what a command is called and what
-      // states it can be in, rather than three copies that drift.
-      '@be': fileURLToPath(new URL('../be/src', import.meta.url)),
-    },
-  },
   build: {
     // Straight into what the panel serves, so the whole console is one deploy
     // and there is no second thing to host.

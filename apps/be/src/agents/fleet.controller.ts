@@ -9,16 +9,18 @@ import {
   type RouteSchemas,
 } from '@dunx/http';
 import { ApiDoc } from '@dunx/openapi';
-import type { ReleaseManifest } from './agent.contract.js';
+import type {
+  AgentView,
+  CommandView,
+  DiscoveryView,
+  ReleaseManifest,
+} from '@dunxon/contract';
 import {
   deployRoute,
   discoverRoute,
   listCommandsRoute,
   oneAgentRoute,
   queueRoute,
-  type AgentView,
-  type CommandView,
-  type DiscoveryView,
 } from './agents.schemas.js';
 import { AgentsService } from './agents.service.js';
 import { CommandsService } from './commands.service.js';

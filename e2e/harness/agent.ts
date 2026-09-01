@@ -8,8 +8,19 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import type { Identity } from '@agent/config/identity.js';
 import type { Panel } from './panel.js';
+
+/**
+ * What the agent writes to its identity file, as much of it as the harness reads.
+ * Declared here rather than imported from the agent's `src` so the suite reaches
+ * into no other package's internals - it asserts on the on-disk contract, which
+ * is what a real operator would inspect too.
+ */
+interface Identity {
+  readonly agentId: string;
+  readonly agentToken: string;
+  readonly panelUrl: string;
+}
 
 const REPO_ROOT = resolve(import.meta.dir, '../..');
 /**

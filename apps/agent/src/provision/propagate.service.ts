@@ -1,9 +1,6 @@
 import { Logger } from '@dunx/core';
 import { existsSync, readFileSync } from 'node:fs';
-import type {
-  DeployCredential,
-  DiscoveredHost,
-} from '@be/agents/agent.contract.js';
+import type { DeployCredential, DiscoveredHost } from '@dunxon/contract';
 import { AgentConfigService } from '../config/settings.js';
 import { PanelClient } from '../panel/panel-client.js';
 import { DiscoverService } from './discover.service.js';

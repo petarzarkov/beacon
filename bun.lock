@@ -21,6 +21,7 @@
         "@dunx/core": "^3.1.3",
         "@dunx/infra": "^3.1.3",
         "@dunx/transform": "^3.1.3",
+        "@dunxon/contract": "workspace:*",
         "zod": "^4.5.4",
       },
       "devDependencies": {
@@ -38,6 +39,7 @@
         "@dunx/infra": "^3.1.3",
         "@dunx/openapi": "^3.1.3",
         "@dunx/transform": "^3.1.3",
+        "@dunxon/contract": "workspace:*",
         "better-auth": "^1.6.25",
         "drizzle-orm": "^0.45.2",
         "zod": "^4.5.4",
@@ -52,6 +54,7 @@
       "name": "dunxon-fe",
       "version": "0.0.0",
       "dependencies": {
+        "@dunxon/contract": "workspace:*",
         "@mantine/core": "^8.3.5",
         "@mantine/hooks": "^8.3.5",
         "@mantine/notifications": "^8.3.5",
@@ -77,10 +80,19 @@
         "@dunx/infra": "^3.1.3",
         "@dunx/openapi": "^3.1.3",
         "@dunx/transform": "^3.1.3",
+        "@dunxon/contract": "workspace:*",
         "better-auth": "^1.6.25",
         "drizzle-orm": "^0.45.2",
         "zod": "^4.5.4",
       },
+      "devDependencies": {
+        "@types/bun": "1.4.0",
+        "typescript": "7.0.2",
+      },
+    },
+    "libs/contract": {
+      "name": "@dunxon/contract",
+      "version": "0.0.0",
       "devDependencies": {
         "@types/bun": "1.4.0",
         "typescript": "7.0.2",
@@ -167,6 +179,8 @@
     "@dunx/testing": ["@dunx/testing@3.1.3", "", { "peerDependencies": { "@dunx/core": "^3.1.3", "@dunx/http": "^3.1.3", "@types/bun": ">=1.3.0" }, "optionalPeers": ["@types/bun"] }, "sha512-Wl/RaUnDvKlFp3h0C40i/fSpyw55Ij8KOxhBOQm3QPrs5Gr2QbgweaqwD0zH9gx4Pkbfx+76GdHMaDeIhiqBAg=="],
 
     "@dunx/transform": ["@dunx/transform@3.1.3", "", { "dependencies": { "oxc-parser": "0.142.0" }, "peerDependencies": { "@types/bun": ">=1.3.0" }, "optionalPeers": ["@types/bun"] }, "sha512-m0KH1jGl21fD+P09UT9ROO5We1MBMBpvE2LWHlejZwJOfOecFHI3j3HnLvrmygoAuKMyqaWOuPA/EVcgq29l+A=="],
+
+    "@dunxon/contract": ["@dunxon/contract@workspace:libs/contract"],
 
     "@emnapi/core": ["@emnapi/core@1.11.2", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.2", "tslib": "^2.4.0" } }, "sha512-TC8MkTuZUtcTSiFeuC0ksCh9QIJ5+F21MvZ4Wn4ORfYaFJ/0dsiudv5tVkejgwZlwQ39jL9WWDe2lz8x0WglOA=="],
 
@@ -570,7 +584,7 @@
 
     "dunxon-fe": ["dunxon-fe@workspace:apps/fe"],
 
-    "electron-to-chromium": ["electron-to-chromium@1.5.417", "", {}, "sha512-4T+DTDWuMPM4aHlHwWdAVCVWwp7LDilnhzkj+c/Lbj91XSQrLuOmZSLtS9Q4iIqjlPUbPOnC624zDVVHCHaolQ=="],
+    "electron-to-chromium": ["electron-to-chromium@1.5.418", "", {}, "sha512-UzS26r3AEbG5wSoGVpJKqwHIU9zwQN7LHdVIThDrJpS0I5KdlXFMEb8543fhc9dVnIIAST6ar8rhwa00AL5MlA=="],
 
     "emoji-regex": ["emoji-regex@10.6.0", "", {}, "sha512-toUI84YS5YmxW219erniWD0CIVOo46xGKColeNQRgOzDorgBi1v4D71/OFzgD9GO2UGKIv1C3Sp8DAn0+j5w7A=="],
 

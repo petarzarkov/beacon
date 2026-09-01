@@ -1,0 +1,20 @@
+{
+  "name": "@dunxon/contract",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The wire contract between panel, agent and console. Import-free, shared by all three.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "typescript": "7.0.2"
+  }
+}
