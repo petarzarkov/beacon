@@ -53,8 +53,8 @@ console drives all of it; and everything is covered end to end by real processes
   panel's silence; pausing it stops the fleet within one report interval.
 - **Auth** — Better Auth sessions guard the console API; agent routes are token-
   checked instead. No public sign-up: `bun run create:admin` is the only way an
-  operator comes to exist, because an account here can restart machines. `APP_URL`
-  + trusted origins are wired for a panel served at a real domain.
+  operator comes to exist, because an account here can restart machines.
+  `APP_URL` + trusted origins are wired for a panel served at a real domain.
 - **Health** — readiness reports whether a release is published and how much of
   the fleet is reporting, both non-critical.
 
