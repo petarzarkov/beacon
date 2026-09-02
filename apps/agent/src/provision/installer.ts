@@ -9,17 +9,17 @@ import { SERVICE_NAME } from '../config/settings.js';
 const STEP_TIMEOUT_MS = 180_000;
 
 /**
- * ssh options that make it usable from a service with no terminal. Every one is
- * load bearing: without `BatchMode` a missing key blocks on a password prompt
- * forever, and without a known-hosts policy the first connection to any host
- * blocks on a fingerprint prompt nobody will ever answer.
+ * ssh options for a service with no terminal. `accept-new` rather than `no` still
+ * refuses a host whose key has *changed*, which is the case worth failing on; the
+ * timeout keeps one unreachable host from stalling a whole pass.
  *
- * `accept-new` rather than `no`: it still refuses a host whose key has *changed*,
- * which is the case actually worth failing on.
+ * `BatchMode` is deliberately **not** here: it belongs only to key auth (see
+ * `#authArgs`). With `BatchMode=yes`, ssh never prompts - which is what stops a
+ * missing key from blocking on a password prompt forever, but is also exactly
+ * what breaks `sshpass`, since sshpass answers the prompt that `BatchMode=yes`
+ * suppresses. So key auth adds it and password auth must not.
  */
 const SSH_OPTIONS = [
-  '-o',
-  'BatchMode=yes',
   '-o',
   'StrictHostKeyChecking=accept-new',
   '-o',
@@ -161,7 +161,17 @@ export class SshInstaller implements Installer {
       chmodSync(keyPath, 0o600);
       return {
         prefix: [],
-        sshArgs: ['-i', keyPath, '-o', 'IdentitiesOnly=yes'],
+        // `BatchMode=yes` here, not in `SSH_OPTIONS`: with a key there is no
+        // prompt to answer, so a missing or rejected key should fail fast rather
+        // than hang. Password auth (below) must not set it - see `SSH_OPTIONS`.
+        sshArgs: [
+          '-i',
+          keyPath,
+          '-o',
+          'IdentitiesOnly=yes',
+          '-o',
+          'BatchMode=yes',
+        ],
       };
     }
     if (!Bun.which('sshpass')) {

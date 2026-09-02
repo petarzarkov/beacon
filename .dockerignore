@@ -1,0 +1,10 @@
+# Keep the Docker build context lean: source only, no installed or generated trees.
+**/node_modules
+.git
+.github
+**/dist
+apps/be/public
+apps/be/data
+apps/*/*.tsbuildinfo
+deploy/testbed/.data
+**/*.log

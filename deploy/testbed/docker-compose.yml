@@ -1,0 +1,94 @@
+# A propagation testbed: a panel, one seed agent, and three bare systemd hosts.
+#
+# Bring it up and watch a fleet assemble itself from one seeded host: the seed
+# sweeps the subnet, finds the neighbours on port 22, installs the agent over
+# SSH, and each neighbour enrols - appearing in the panel with the seed as its
+# installer. Open http://localhost:3000 (admin@dunxon.local / dunxon-testbed) and
+# the Lineage view fills in. Open http://localhost:3001 (the host port; the panel
+# listens on 3000 inside the network).
+#
+#   docker compose -f deploy/testbed/docker-compose.yml up --build
+#
+# This is the "real multi-host SSH coverage" a single dev host cannot fake: the
+# neighbours run systemd, so `dunxon-agent install` sets up units and a run user
+# for real. Everything here is a throwaway on a private network - the fixed
+# password and armed propagation are fine for a testbed and nowhere else.
+
+x-token: &token dunxon-testbed-enrolment-token
+
+networks:
+  dunxnet:
+    ipam:
+      config:
+        - subnet: 10.7.0.0/24
+
+services:
+  panel:
+    build:
+      context: ../..
+      dockerfile: deploy/testbed/Dockerfile
+      target: panel
+    environment:
+      AGENT_ENROLMENT_TOKEN: *token
+      # A real secret because APP_URL is set; the panel refuses the dev default otherwise.
+      AUTH_SECRET: dunxon-testbed-secret-not-for-production-0123456789
+      APP_URL: http://localhost:3001
+      # Arm fleet-wide propagation so the seed actually spreads (paused by default).
+      AGENT_PROPAGATION_ALLOWED: 'true'
+      AGENT_REPORT_INTERVAL_MS: '3000'
+      LOG_LEVEL: info
+    ports:
+      - '3001:3000'
+    networks:
+      - dunxnet
+
+  seed:
+    build:
+      context: ../..
+      dockerfile: deploy/testbed/Dockerfile
+      target: seed
+    depends_on:
+      - panel
+    environment:
+      PANEL_URL: http://panel:3000
+      AGENT_TOKEN: *token
+      AGENT_MACHINE_ID: seed
+      AGENT_STATE_FILE: /root/identity.json
+      REPORT_INTERVAL_MS: '3000'
+      LOG_LEVEL: info
+      # The two keys that turn on spreading: this host opts in locally, and the
+      # panel is armed above.
+      AGENT_PROPAGATE: 'true'
+      AGENT_PROPAGATE_USER: root
+      AGENT_PROPAGATE_PASSWORD: dunxon-testbed
+      # The URL a neighbour dials the panel on - it cannot infer the panel's
+      # address for a different host, so the seed tells it.
+      AGENT_PROPAGATE_PANEL_URL: http://panel:3000
+      AGENT_PROPAGATE_INTERVAL_MS: '15000'
+    networks:
+      - dunxnet
+
+  neighbour-1: &neighbour
+    build:
+      context: ../..
+      dockerfile: deploy/testbed/Dockerfile
+      target: neighbour
+    # systemd as PID 1 on a cgroup v2 host: it needs the host's cgroup namespace
+    # (`cgroup: host`) as well as privileges and a writable cgroup mount, or it
+    # exits at boot. `/run` on tmpfs is where it keeps runtime state.
+    privileged: true
+    cgroup: host
+    stop_signal: SIGRTMIN+3
+    tmpfs:
+      - /run
+      - /run/lock
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    networks:
+      - dunxnet
+
+  neighbour-2:
+    <<: *neighbour
+
+  neighbour-3:
+    <<: *neighbour
