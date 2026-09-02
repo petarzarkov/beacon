@@ -50,6 +50,7 @@ describe('the propagation kill switch', () => {
       expect(await settings.json()).toEqual({
         propagationAllowed: false,
         allowArbitraryExec: false,
+        alertWebhookUrl: null,
       });
     } finally {
       await agent.dispose();
@@ -103,6 +104,7 @@ describe('the propagation kill switch', () => {
     expect(await settings.json()).toEqual({
       propagationAllowed: false,
       allowArbitraryExec: false,
+      alertWebhookUrl: null,
     });
   });
 });

@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router';
 import { AgentDetailPage } from './AgentDetailPage';
 import { AgentsPage } from './AgentsPage';
+import { AlertsPage } from './AlertsPage';
 import { CommandsPage } from './CommandsPage';
 import { DiscoveredPage } from './DiscoveredPage';
 import { LineagePage } from './LineagePage';
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
           { path: 'agents', Component: AgentsPage },
           { path: 'agents/:agentId', Component: AgentDetailPage },
           { path: 'commands', Component: CommandsPage },
+          { path: 'alerts', Component: AlertsPage },
           { path: 'discovered', Component: DiscoveredPage },
           { path: 'lineage', Component: LineagePage },
           { path: '*', Component: NotFoundPage },

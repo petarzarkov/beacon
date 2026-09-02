@@ -14,6 +14,7 @@ import type {
   HostReport,
 } from '@beacon/contract';
 import { AgentsRepository, type AgentRow } from './agents.repository.js';
+import { AlertsService } from './alerts.service.js';
 import type { CommandLibraryEntry, CommandView } from '@beacon/contract';
 import type {
   deployRoute,
@@ -47,6 +48,7 @@ export class CommandsService {
   constructor(
     private readonly repo: AgentsRepository,
     private readonly releases: ReleasesService,
+    private readonly alerts: AlertsService,
     private readonly config: AppConfigService,
     private readonly logger: Logger,
   ) {}
@@ -331,7 +333,13 @@ export class CommandsService {
         at,
         outcome.detail ?? null,
       );
-      if (applied) settled += 1;
+      if (applied) {
+        settled += 1;
+        // A failed command is a point event an alert rule may want to raise.
+        if (!outcome.ok) {
+          this.alerts.onCommandFailed(agentId, row.label ?? row.command);
+        }
+      }
     }
     return settled;
   }

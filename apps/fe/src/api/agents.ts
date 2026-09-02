@@ -8,6 +8,8 @@ import type {
   AgentEventView,
   AgentMetricPoint,
   AgentView,
+  AlertRuleView,
+  AlertView,
   CommandLibraryEntry,
   CommandView,
   DiagnoseProbe,
@@ -22,6 +24,8 @@ export type {
   AgentEventView,
   AgentMetricPoint,
   AgentView,
+  AlertRuleView,
+  AlertView,
   CommandLibraryEntry,
   CommandView,
   DiscoveryView,
@@ -245,6 +249,69 @@ export const useSetPropagation = () => {
       http.put<FleetSettings>('/api/agents/settings', {
         propagationAllowed: allowed,
       }),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.settings }),
+  });
+};
+
+// --- Alerting ----------------------------------------------------------------
+
+/** What a new alert rule looks like from the console. */
+export interface NewAlertRule {
+  readonly name: string;
+  readonly kind: AlertRuleView['kind'];
+  readonly metric?: AlertRuleView['metric'];
+  readonly comparator?: AlertRuleView['comparator'];
+  readonly threshold?: number;
+  readonly silenceSeconds?: number;
+}
+
+export const useAlerts = (
+  scope: 'active' | 'all' = 'active',
+): UseQueryResult<readonly AlertView[]> =>
+  useQuery({
+    queryKey: [...keys.alerts, scope],
+    queryFn: () =>
+      http.get<readonly AlertView[]>(`/api/agents/alerts?scope=${scope}`),
+    refetchInterval: LIVE_MS,
+  });
+
+export const useAckAlert = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => http.post(`/api/agents/alerts/${id}/ack`),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.alerts }),
+  });
+};
+
+export const useAlertRules = (): UseQueryResult<readonly AlertRuleView[]> =>
+  useQuery({
+    queryKey: keys.alertRules,
+    queryFn: () =>
+      http.get<readonly AlertRuleView[]>('/api/agents/alert-rules'),
+  });
+
+export const useAddAlertRule = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (rule: NewAlertRule) =>
+      http.post<AlertRuleView>('/api/agents/alert-rules', rule),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.alertRules }),
+  });
+};
+
+export const useDeleteAlertRule = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => http.del(`/api/agents/alert-rules/${id}`),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.alertRules }),
+  });
+};
+
+export const useSetAlertWebhook = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (url: string) =>
+      http.put<FleetSettings>('/api/agents/alert-webhook', { url }),
     onSuccess: () => client.invalidateQueries({ queryKey: keys.settings }),
   });
 };

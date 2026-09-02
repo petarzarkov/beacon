@@ -39,7 +39,10 @@ should not have a dependency that can take it down.
   - `fleet.controller.ts` — `/api/agents/*`, `@UseGuards(SessionGuard)`. The
     console's API: list, one agent + its events + metric history, commands,
     discovered, deployments, read-only diagnostics, the command library
-    (`@Roles('admin')` to curate) and `exec` (Tier 1 library, Tier 2 free-form).
+    (`@Roles('admin')` to curate) and `exec` (Tier 1 library, Tier 2 free-form),
+    plus alerting (rules + alerts + the notification webhook).
+  - `alerts.service.ts` — alert rules, evaluation (thresholds on report, silence
+    on the sweep, failed commands), the alert lifecycle, and the webhook.
   - `agents.service.ts` — enrolment, report ingest, the fleet views.
   - `commands.service.ts` — the command lifecycle and the TTL sweep.
   - `releases.service.ts` — serves the published binary + manifest.

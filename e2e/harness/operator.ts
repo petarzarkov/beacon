@@ -2,6 +2,8 @@ import type {
   AgentEventView,
   AgentMetricPoint,
   AgentView,
+  AlertRuleView,
+  AlertView,
   CommandLibraryEntry,
   CommandView,
   DiagnoseProbe,
@@ -13,10 +15,22 @@ export type {
   AgentEventView,
   AgentMetricPoint,
   AgentView,
+  AlertRuleView,
+  AlertView,
   CommandLibraryEntry,
   CommandView,
   DiscoveryView,
 };
+
+/** What a new alert rule looks like from a test. */
+export interface NewAlertRule {
+  readonly name: string;
+  readonly kind: AlertRuleView['kind'];
+  readonly metric?: AlertRuleView['metric'];
+  readonly comparator?: AlertRuleView['comparator'];
+  readonly threshold?: number;
+  readonly silenceSeconds?: number;
+}
 
 export interface DeployRequest {
   readonly target: string;
@@ -168,6 +182,36 @@ export class Operator {
     return this.#json<CommandView>(`/api/agents/${agentId}/exec-raw`, {
       method: 'POST',
       body: JSON.stringify({ command }),
+    });
+  }
+
+  alerts(scope: 'active' | 'all' = 'active'): Promise<readonly AlertView[]> {
+    return this.#json<readonly AlertView[]>(
+      `/api/agents/alerts?scope=${scope}`,
+    );
+  }
+
+  alertRules(): Promise<readonly AlertRuleView[]> {
+    return this.#json<readonly AlertRuleView[]>('/api/agents/alert-rules');
+  }
+
+  addAlertRule(rule: NewAlertRule): Promise<AlertRuleView> {
+    return this.#json<AlertRuleView>('/api/agents/alert-rules', {
+      method: 'POST',
+      body: JSON.stringify(rule),
+    });
+  }
+
+  ackAlert(id: string): Promise<{ acknowledged: true }> {
+    return this.#json<{ acknowledged: true }>(`/api/agents/alerts/${id}/ack`, {
+      method: 'POST',
+    });
+  }
+
+  setAlertWebhook(url: string): Promise<unknown> {
+    return this.#json('/api/agents/alert-webhook', {
+      method: 'PUT',
+      body: JSON.stringify({ url }),
     });
   }
 

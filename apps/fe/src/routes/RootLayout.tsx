@@ -11,6 +11,7 @@ import {
   useMantineColorScheme,
 } from '@mantine/core';
 import {
+  IconBell,
   IconBinaryTree,
   IconDeviceDesktop,
   IconLogout,
@@ -26,7 +27,7 @@ import {
   useLocation,
   useNavigate,
 } from 'react-router';
-import { useDiscovered, useRelease } from '../api/agents';
+import { useAlerts, useDiscovered, useRelease } from '../api/agents';
 import { useSession, useSignOut } from '../api/auth';
 import { PropagationSwitch } from '../components/PropagationSwitch';
 
@@ -70,6 +71,9 @@ export const RootLayout = (): React.ReactElement => {
   const discoveredCount = (discovered.data ?? []).filter(
     (host) => host.enrolledAgentId === null,
   ).length;
+  const firing = (useAlerts('active').data ?? []).filter(
+    (a) => a.state === 'firing',
+  ).length;
 
   const navItems = [
     {
@@ -83,6 +87,13 @@ export const RootLayout = (): React.ReactElement => {
       label: 'Commands',
       icon: <IconStack2 size={16} />,
       active: pathname.startsWith('/commands'),
+    },
+    {
+      to: '/alerts',
+      label: 'Alerts',
+      icon: <IconBell size={16} />,
+      active: pathname.startsWith('/alerts'),
+      count: firing,
     },
     {
       to: '/discovered',

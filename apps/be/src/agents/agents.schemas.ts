@@ -2,6 +2,9 @@ import { z } from 'zod';
 import {
   AGENT_COMMANDS,
   AGENT_EVENT_KINDS,
+  ALERT_COMPARATORS,
+  ALERT_METRICS,
+  ALERT_RULE_KINDS,
   DIAGNOSE_PROBES,
 } from '@beacon/contract';
 
@@ -259,6 +262,49 @@ export const execRoute = {
 export const execRawRoute = {
   params: agentId,
   body: z.object({ command: z.string().min(1).max(4096) }),
+} as const;
+
+// --- Alerting -----------------------------------------------------------------
+
+export const alertRule = z
+  .object({
+    name: z.string().min(1).max(80),
+    kind: z.enum(ALERT_RULE_KINDS),
+    metric: z.enum(ALERT_METRICS).optional(),
+    comparator: z.enum(ALERT_COMPARATORS).optional(),
+    threshold: z.number().optional(),
+    silenceSeconds: z.number().int().min(1).max(86_400).optional(),
+  })
+  .refine(
+    (r) =>
+      r.kind !== 'metric_threshold' ||
+      (r.metric !== undefined &&
+        r.comparator !== undefined &&
+        r.threshold !== undefined),
+    { message: 'metric_threshold needs metric, comparator and threshold' },
+  )
+  .refine((r) => r.kind !== 'agent_silent' || r.silenceSeconds !== undefined, {
+    message: 'agent_silent needs silenceSeconds',
+  })
+  .meta({
+    id: 'AlertRule',
+    description: 'An alerting rule, evaluated fleet-wide',
+  });
+export const createAlertRuleRoute = { body: alertRule } as const;
+export const alertRuleIdRoute = {
+  params: z.object({ id: z.string().min(1).max(64) }),
+} as const;
+export const alertsRoute = {
+  query: z.object({
+    scope: z.enum(['active', 'all']).default('active'),
+    limit: z.coerce.number().int().min(1).max(500).default(100),
+  }),
+} as const;
+export const alertIdRoute = {
+  params: z.object({ id: z.string().min(1).max(64) }),
+} as const;
+export const alertWebhookRoute = {
+  body: z.object({ url: z.string().max(2048) }),
 } as const;
 
 export const fleetSettings = z

@@ -121,6 +121,11 @@ describe('the console (browser)', () => {
       await page.getByRole('button', { name: 'Lineage' }).click();
       await page.getByRole('heading', { name: 'Lineage' }).waitFor();
       await page.getByRole('link', { name: hostname() }).waitFor();
+
+      // The alerts view, with the admin rule-management panel.
+      await page.getByRole('button', { name: 'Alerts' }).click();
+      await page.getByRole('heading', { name: 'Alerts' }).waitFor();
+      await page.getByText('Alert rules').waitFor();
     } finally {
       await page.close();
     }

@@ -9,6 +9,8 @@ import {
   agentEvents,
   agentMetrics,
   agents,
+  alertRules,
+  alerts,
   commandLibrary,
   discoveredHosts,
   fleetSettings,
@@ -17,6 +19,8 @@ import {
   type AgentEventRow,
   type AgentMetricRow,
   type AgentRow,
+  type AlertRow,
+  type AlertRuleRow,
   type CommandLibraryRow,
   type DiscoveredHostRow,
 } from './agents.schema.js';
@@ -26,9 +30,14 @@ export type {
   AgentEventRow,
   AgentMetricRow,
   AgentRow,
+  AlertRow,
+  AlertRuleRow,
   CommandLibraryRow,
   DiscoveredHostRow,
 };
+
+/** The alert states that count as still open. */
+export const ACTIVE_ALERT_STATES = ['firing', 'acknowledged'] as const;
 
 /** The states a command can still be delivered or settled from. */
 export const OPEN_STATES = ['queued', 'delivered'] as const;
@@ -100,6 +109,31 @@ export class AgentsRepository {
       created_at TEXT NOT NULL,
       created_by TEXT
     )`);
+    this.db.run(sql`CREATE TABLE IF NOT EXISTS alert_rules (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      metric TEXT,
+      comparator TEXT,
+      threshold REAL,
+      silence_seconds INTEGER,
+      enabled INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      created_by TEXT
+    )`);
+    this.db.run(sql`CREATE TABLE IF NOT EXISTS alerts (
+      id TEXT PRIMARY KEY,
+      rule_id TEXT NOT NULL REFERENCES alert_rules(id) ON DELETE CASCADE,
+      agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+      state TEXT NOT NULL,
+      message TEXT NOT NULL,
+      value REAL,
+      fired_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      resolved_at TEXT,
+      acknowledged_at TEXT,
+      acknowledged_by TEXT
+    )`);
     this.db.run(sql`CREATE TABLE IF NOT EXISTS agent_events (
       id TEXT PRIMARY KEY,
       agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
@@ -150,6 +184,125 @@ export class AgentsRepository {
     );
     this.db.run(
       sql`CREATE INDEX IF NOT EXISTS agent_metrics_agent_at ON agent_metrics (agent_id, at)`,
+    );
+    this.db.run(
+      sql`CREATE INDEX IF NOT EXISTS alerts_agent_state ON alerts (agent_id, state)`,
+    );
+  }
+
+  // --- Alert rules -----------------------------------------------------------
+
+  listRules(): readonly AlertRuleRow[] {
+    return this.db
+      .select()
+      .from(alertRules)
+      .orderBy(alertRules.createdAt)
+      .all();
+  }
+
+  enabledRules(): readonly AlertRuleRow[] {
+    return this.db
+      .select()
+      .from(alertRules)
+      .where(eq(alertRules.enabled, true))
+      .all();
+  }
+
+  findRule(id: string): AlertRuleRow | null {
+    return (
+      this.db.select().from(alertRules).where(eq(alertRules.id, id)).get() ??
+      null
+    );
+  }
+
+  createRule(row: AlertRuleRow): void {
+    this.db.insert(alertRules).values(row).run();
+  }
+
+  deleteRule(id: string): boolean {
+    return (
+      this.db.delete(alertRules).where(eq(alertRules.id, id)).returning().all()
+        .length > 0
+    );
+  }
+
+  // --- Alerts ----------------------------------------------------------------
+
+  /** The open alert for a (rule, agent), or null - the dedupe key. */
+  activeAlert(ruleId: string, agentId: string): AlertRow | null {
+    return (
+      this.db
+        .select()
+        .from(alerts)
+        .where(
+          and(
+            eq(alerts.ruleId, ruleId),
+            eq(alerts.agentId, agentId),
+            inArray(alerts.state, [...ACTIVE_ALERT_STATES]),
+          ),
+        )
+        .get() ?? null
+    );
+  }
+
+  insertAlert(row: AlertRow): void {
+    this.db.insert(alerts).values(row).run();
+  }
+
+  /** Refresh an open alert's observed value while its condition still holds. */
+  touchAlert(id: string, updatedAt: string, value: number | null): void {
+    this.db
+      .update(alerts)
+      .set({ updatedAt, value })
+      .where(eq(alerts.id, id))
+      .run();
+  }
+
+  resolveAlert(id: string, at: string): void {
+    this.db
+      .update(alerts)
+      .set({ state: 'resolved', resolvedAt: at, updatedAt: at })
+      .where(eq(alerts.id, id))
+      .run();
+  }
+
+  ackAlert(id: string, at: string, by: string | null): boolean {
+    return (
+      this.db
+        .update(alerts)
+        .set({
+          state: 'acknowledged',
+          acknowledgedAt: at,
+          acknowledgedBy: by,
+          updatedAt: at,
+        })
+        .where(and(eq(alerts.id, id), eq(alerts.state, 'firing')))
+        .returning()
+        .all().length > 0
+    );
+  }
+
+  findAlert(id: string): AlertRow | null {
+    return this.db.select().from(alerts).where(eq(alerts.id, id)).get() ?? null;
+  }
+
+  /** Open alerts (newest first) for the console; `all` also includes resolved. */
+  listAlerts(scope: 'active' | 'all', limit: number): readonly AlertRow[] {
+    const query = this.db.select().from(alerts);
+    const rows =
+      scope === 'active'
+        ? query.where(inArray(alerts.state, [...ACTIVE_ALERT_STATES]))
+        : query;
+    return rows.orderBy(desc(alerts.firedAt)).limit(limit).all();
+  }
+
+  countActiveAlerts(): number {
+    return (
+      this.db
+        .select({ n: count() })
+        .from(alerts)
+        .where(inArray(alerts.state, [...ACTIVE_ALERT_STATES]))
+        .get()?.n ?? 0
     );
   }
 

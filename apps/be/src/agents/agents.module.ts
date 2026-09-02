@@ -6,6 +6,7 @@ import { DatabaseModule } from '../database/database.module.js';
 import { AgentController } from './agent.controller.js';
 import { AgentsRepository } from './agents.repository.js';
 import { AgentsService } from './agents.service.js';
+import { AlertsService } from './alerts.service.js';
 import { CommandsService } from './commands.service.js';
 import { FleetController } from './fleet.controller.js';
 import { ReleasesService } from './releases.service.js';
@@ -42,6 +43,7 @@ import { ReleasesService } from './releases.service.js';
   providers: [
     AgentsRepository,
     AgentsService,
+    AlertsService,
     CommandsService,
     ReleasesService,
   ],

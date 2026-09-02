@@ -396,4 +396,82 @@ export interface FleetSettings {
   readonly propagationAllowed: boolean;
   /** Whether free-form (Tier 2) command execution is enabled on this panel. */
   readonly allowArbitraryExec: boolean;
+  /** Where alert notifications are POSTed, or null if none is configured. */
+  readonly alertWebhookUrl: string | null;
+}
+
+// --- Alerting ----------------------------------------------------------------
+// The panel already sees every report, so most rules are evaluated there without
+// any agent change: a threshold on the metrics an agent reports, or silence
+// (which is the absence of a report, caught on the sweep).
+
+/**
+ * What a rule watches:
+ * - `metric_threshold` - a reported metric crosses a bound (mem, CPU, load).
+ * - `agent_silent` - no report for longer than a window; the one condition that
+ *   is the *absence* of data, so it is judged on the sweep, not on a report.
+ * - `command_failed` - a queued command settled `failed`.
+ */
+export const ALERT_RULE_KINDS = [
+  'metric_threshold',
+  'agent_silent',
+  'command_failed',
+] as const;
+export type AlertRuleKind = (typeof ALERT_RULE_KINDS)[number];
+
+/** The metrics a `metric_threshold` rule can watch, drawn from every report. */
+export const ALERT_METRICS = [
+  'agent_cpu',
+  'agent_mem_mb',
+  'host_load1',
+  'host_mem_pct',
+] as const;
+export type AlertMetric = (typeof ALERT_METRICS)[number];
+
+export const ALERT_COMPARATORS = ['gt', 'lt'] as const;
+export type AlertComparator = (typeof ALERT_COMPARATORS)[number];
+
+/** One alerting rule, evaluated fleet-wide. */
+export interface AlertRuleView {
+  readonly id: string;
+  readonly name: string;
+  readonly kind: AlertRuleKind;
+  /** Set for `metric_threshold`. */
+  readonly metric: AlertMetric | null;
+  readonly comparator: AlertComparator | null;
+  readonly threshold: number | null;
+  /** Set for `agent_silent`: how long without a report before it fires. */
+  readonly silenceSeconds: number | null;
+  readonly enabled: boolean;
+  readonly createdAt: string;
+  readonly createdBy: string | null;
+}
+
+/**
+ * ```
+ * firing -> acknowledged -> resolved
+ *       \--------------------> resolved
+ * ```
+ * A metric or silence alert resolves itself when the condition clears; a
+ * `command_failed` alert is a point event an operator acknowledges.
+ */
+export const ALERT_STATES = ['firing', 'acknowledged', 'resolved'] as const;
+export type AlertState = (typeof ALERT_STATES)[number];
+
+/** An alert, as the console sees it. */
+export interface AlertView {
+  readonly id: string;
+  readonly ruleId: string;
+  readonly ruleName: string;
+  readonly kind: AlertRuleKind;
+  readonly agentId: string;
+  readonly agentHostname: string;
+  readonly state: AlertState;
+  readonly message: string;
+  /** The observed value that tripped it, when the rule has one. */
+  readonly value: number | null;
+  readonly firedAt: string;
+  readonly resolvedAt: string | null;
+  readonly acknowledgedAt: string | null;
+  readonly acknowledgedBy: string | null;
 }

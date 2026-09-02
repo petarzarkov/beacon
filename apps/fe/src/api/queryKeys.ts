@@ -11,4 +11,6 @@ export const keys = {
   release: ['release'] as const,
   settings: ['settings'] as const,
   library: ['library'] as const,
+  alerts: ['alerts'] as const,
+  alertRules: ['alert-rules'] as const,
 };

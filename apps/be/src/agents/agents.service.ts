@@ -11,6 +11,7 @@ import type {
   ReportResponse,
 } from '@beacon/contract';
 import { AgentsRepository, type AgentRow } from './agents.repository.js';
+import { AlertsService } from './alerts.service.js';
 import type {
   AgentEventView,
   AgentMetricPoint,
@@ -50,6 +51,7 @@ export class AgentsService implements OnInit {
     private readonly repo: AgentsRepository,
     private readonly commands: CommandsService,
     private readonly releases: ReleasesService,
+    private readonly alerts: AlertsService,
     private readonly config: AppConfigService,
     private readonly logger: Logger,
   ) {}
@@ -71,6 +73,9 @@ export class AgentsService implements OnInit {
     ).toISOString();
     const pruned = this.repo.pruneMetrics(before);
     if (pruned > 0) this.logger.info('pruned old metrics', { pruned });
+    // Silence is the one alert condition that is the absence of a report, so it
+    // is judged here on the sweep rather than on ingest.
+    this.alerts.evaluateSilence();
     return this.commands.expire();
   }
 
@@ -240,6 +245,10 @@ export class AgentsService implements OnInit {
       cpuPercent: report.agentCpuPercent,
       load1: report.load1,
     });
+
+    // Judge the threshold rules against this fresh report, and clear any silence
+    // alert (a report is proof of life).
+    this.alerts.evaluateReport(agent, report);
 
     return {
       ok: true,

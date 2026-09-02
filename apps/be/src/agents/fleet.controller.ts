@@ -15,6 +15,8 @@ import type {
   AgentEventView,
   AgentMetricPoint,
   AgentView,
+  AlertRuleView,
+  AlertView,
   CommandLibraryEntry,
   CommandView,
   DiscoveryView,
@@ -24,6 +26,11 @@ import type {
 import {
   agentEventsRoute,
   agentMetricsRoute,
+  alertIdRoute,
+  alertRuleIdRoute,
+  alertsRoute,
+  alertWebhookRoute,
+  createAlertRuleRoute,
   createLibraryRoute,
   deployRoute,
   diagnoseRoute,
@@ -37,6 +44,7 @@ import {
   settingsRoute,
 } from './agents.schemas.js';
 import { AgentsService } from './agents.service.js';
+import { AlertsService } from './alerts.service.js';
 import { CommandsService } from './commands.service.js';
 import { ReleasesService } from './releases.service.js';
 
@@ -67,6 +75,7 @@ export class FleetController {
     private readonly agents: AgentsService,
     private readonly commands: CommandsService,
     private readonly releases: ReleasesService,
+    private readonly alerts: AlertsService,
     private readonly auth: AuthContext,
   ) {}
 
@@ -121,6 +130,7 @@ export class FleetController {
     return {
       propagationAllowed: this.agents.propagationAllowed(),
       allowArbitraryExec: this.agents.allowArbitraryExec(),
+      alertWebhookUrl: this.alerts.webhookUrl(),
     };
   }
 
@@ -142,7 +152,54 @@ export class FleetController {
         this.#issuer(),
       ),
       allowArbitraryExec: this.agents.allowArbitraryExec(),
+      alertWebhookUrl: this.alerts.webhookUrl(),
     };
+  }
+
+  // --- Alerting --------------------------------------------------------------
+  // Static segments, declared before `/:id`.
+
+  @ApiDoc({ summary: 'Alerts (firing/acknowledged, or all)' })
+  @Get('/alerts', alertsRoute)
+  alerts_(input: Input<typeof alertsRoute>): readonly AlertView[] {
+    return this.alerts.listAlerts(input.query.scope, input.query.limit);
+  }
+
+  @ApiDoc({ summary: 'Acknowledge an alert' })
+  @Post('/alerts/:id/ack', alertIdRoute)
+  ackAlert(input: Input<typeof alertIdRoute>): { acknowledged: true } {
+    this.alerts.acknowledge(input.params.id, this.#issuer());
+    return { acknowledged: true };
+  }
+
+  @ApiDoc({ summary: 'The alerting rules' })
+  @Get('/alert-rules')
+  alertRules(): readonly AlertRuleView[] {
+    return this.alerts.listRules();
+  }
+
+  @Roles('admin')
+  @ApiDoc({ summary: 'Create an alerting rule (admin)' })
+  @Post('/alert-rules', createAlertRuleRoute)
+  addAlertRule(input: Input<typeof createAlertRuleRoute>): AlertRuleView {
+    return this.alerts.createRule(input.body, this.#issuer());
+  }
+
+  @Roles('admin')
+  @ApiDoc({ summary: 'Delete an alerting rule (admin)' })
+  @Delete('/alert-rules/:id', alertRuleIdRoute)
+  removeAlertRule(input: Input<typeof alertRuleIdRoute>): { deleted: true } {
+    this.alerts.deleteRule(input.params.id);
+    return { deleted: true };
+  }
+
+  @Roles('admin')
+  @ApiDoc({ summary: 'Set (or clear) the alert notification webhook (admin)' })
+  @Put('/alert-webhook', alertWebhookRoute)
+  setAlertWebhook(input: Input<typeof alertWebhookRoute>): FleetSettings {
+    const url = input.body.url.trim();
+    this.alerts.setWebhookUrl(url === '' ? null : url, this.#issuer());
+    return this.settings();
   }
 
   /**
@@ -289,12 +346,16 @@ export class FleetController {
     return { deleted: true };
   }
 
-  /** Unused parameter shape kept off the signature: this route takes nothing. */
+  /**
+   * Run the periodic sweep now rather than waiting for its interval: expire
+   * commands past their TTL, prune old metrics, and re-evaluate silence alerts.
+   * Unused parameter shape kept off the signature: this route takes nothing.
+   */
   @ApiDoc({
-    summary: 'Expire anything past its TTL now, rather than on the sweep',
+    summary: 'Run the sweep now (expire TTLs, evaluate silence)',
   })
   @Post('/commands/expire')
   expire(_input: Input<RouteSchemas>): { expired: number } {
-    return { expired: this.commands.expire() };
+    return { expired: this.agents.sweep() };
   }
 }

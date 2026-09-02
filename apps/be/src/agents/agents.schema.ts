@@ -8,6 +8,10 @@ import {
 import type {
   AgentCommandName,
   AgentEventKind,
+  AlertComparator,
+  AlertMetric,
+  AlertRuleKind,
+  AlertState,
   CommandState,
   DeployPayload,
   DiagnosePayload,
@@ -121,6 +125,52 @@ export const commandLibrary = sqliteTable('command_library', {
 });
 
 /**
+ * An alerting rule, evaluated fleet-wide. Kept on the panel because the panel is
+ * where every report lands - a threshold or a silence is judged here, not by the
+ * agent. `enabled` lets a rule be paused without deleting it.
+ */
+export const alertRules = sqliteTable('alert_rules', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  kind: text('kind').$type<AlertRuleKind>().notNull(),
+  metric: text('metric').$type<AlertMetric>(),
+  comparator: text('comparator').$type<AlertComparator>(),
+  threshold: real('threshold'),
+  silenceSeconds: integer('silence_seconds'),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull(),
+  createdAt: text('created_at').notNull(),
+  createdBy: text('created_by'),
+});
+
+/**
+ * A fired alert. Deduped to one active row per (rule, agent): a condition that
+ * stays true does not pile up, it updates the one alert. Metric and silence
+ * alerts resolve themselves when the condition clears; a `command_failed` one is
+ * a point event an operator acknowledges.
+ */
+export const alerts = sqliteTable(
+  'alerts',
+  {
+    id: text('id').primaryKey(),
+    ruleId: text('rule_id')
+      .notNull()
+      .references(() => alertRules.id, { onDelete: 'cascade' }),
+    agentId: text('agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'cascade' }),
+    state: text('state').$type<AlertState>().notNull(),
+    message: text('message').notNull(),
+    value: real('value'),
+    firedAt: text('fired_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+    resolvedAt: text('resolved_at'),
+    acknowledgedAt: text('acknowledged_at'),
+    acknowledgedBy: text('acknowledged_by'),
+  },
+  (table) => [index('alerts_agent_state').on(table.agentId, table.state)],
+);
+
+/**
  * A lifecycle event an agent reported - it started, it stopped. Kept as a small
  * append-only log per host, so the console can show a machine coming and going
  * rather than leaving an operator to infer it from a gap between reports.
@@ -226,6 +276,8 @@ export type AgentCommandRow = typeof agentCommands.$inferSelect;
 export type AgentEventRow = typeof agentEvents.$inferSelect;
 export type AgentMetricRow = typeof agentMetrics.$inferSelect;
 export type CommandLibraryRow = typeof commandLibrary.$inferSelect;
+export type AlertRuleRow = typeof alertRules.$inferSelect;
+export type AlertRow = typeof alerts.$inferSelect;
 export type DiscoveredHostRow = typeof discoveredHosts.$inferSelect;
 export type FleetSettingRow = typeof fleetSettings.$inferSelect;
 export type UsedGrantRow = typeof usedGrants.$inferSelect;
