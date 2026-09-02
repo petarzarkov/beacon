@@ -92,6 +92,11 @@ container is built, for any user; everything else boots the container.
   output as the command's outcome. An allowlist, not a shell: the console can
   inspect a host without becoming a way to run anything on it. The report also
   carries the agent's own memory and CPU and whether it is a spreader.
+- **Inventory** — `POST /api/agent/inventory` records what a host _is_: its CPU,
+  memory, disks and network interfaces. Sent out of band from the report loop
+  (once at startup, and on an `inventory` command that refreshes it), so a report
+  stays small and machine-neutral; the panel keeps the latest snapshot per host.
+  The core facts come from `node:os` natively, disks from `df` best-effort.
 - **`install` / `uninstall`** — writes `/usr/local/bin`, the `0600` config, a
   `/var/lib` state dir, an unprivileged service unit and a root update timer, and
   a single-line sudoers rule that lets the service ask the root timer to update.
@@ -125,11 +130,12 @@ path, every screen is a real URL that deep-links and survives a reload.
   Each row's host links to that agent's page.
 - **Agent detail** (`/agents/:id`) — one host in full: its own memory / CPU /
   uptime (not the machine's), **trend charts** of memory and CPU over a chosen
-  window, a **run-command** panel (a curated library any operator can run, plus
-  free-form for an admin when enabled — admins curate the library here too), a
-  **diagnostics** panel (a read-only probe, its output), its **lifecycle
-  activity** (startups and exits as a timeline), its command history, and the
-  controls.
+  window, an **inventory** panel (CPU, memory, disks with usage bars, and
+  interfaces, with a refresh button), a **run-command** panel (a curated library
+  any operator can run, plus free-form for an admin when enabled — admins curate
+  the library here too), a **diagnostics** panel (a read-only probe, its output),
+  its **lifecycle activity** (startups and exits as a timeline), its command
+  history, and the controls.
 - **Commands** (`/commands`) — open vs. recent history, each with its state and
   detail.
 - **Alerts** (`/alerts`) — firing/acknowledged alerts with acknowledge, an
@@ -157,16 +163,18 @@ An in-process panel on an ephemeral port plus **real agent subprocesses** — th
 only way to test the things that matter: that `restart` really ends the process,
 that a fresh process reports a fresh uptime, that an identity on disk is found
 again by a different process, and that **self-update actually swaps the binary**
-and comes back on the new one. 61 tests across enrolment, the command lifecycle,
+and comes back on the new one. 64 tests across enrolment, the command lifecycle,
 releases, self-update (the real swap, the hash-mismatch refusal, the
 operator-driven queue), **lifecycle events** (a clean stop reports an exit, a kill
 reports none), **metrics history** (a point per report, oldest-first, real
-memory and CPU), **diagnostics** (a read-only probe runs and returns output, the
-allowlist is enforced), **custom commands** (a Tier-1 library entry runs and a
-non-admin cannot curate it; Tier-2 free-form is refused unless enabled, then
-runs), **alerting** (a threshold fires and is acknowledged; silence fires on the
-sweep and resolves when the agent returns; a non-admin cannot curate rules; a
-firing alert reaches a webhook), **propagation lineage** (a token-enrolled host is
+memory and CPU), **inventory** (a host reports its hardware and OS at startup,
+re-reports on a refresh command, and is null until it does), **diagnostics** (a
+read-only probe runs and returns output, the allowlist is enforced), **custom
+commands** (a Tier-1 library entry runs and a non-admin cannot curate it; Tier-2
+free-form is refused unless enabled, then runs), **alerting** (a threshold fires
+and is acknowledged; silence fires on the sweep and resolves when the agent
+returns; a non-admin cannot curate rules; a firing alert reaches a webhook),
+**propagation lineage** (a token-enrolled host is
 attributed to whoever swept its address, and spreaders report themselves),
 provisioning, the propagation kill switch, a multi-agent fleet with an offline
 host, and the console — both the panel serving the SPA and **the SPA itself driven

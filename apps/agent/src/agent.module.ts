@@ -6,6 +6,7 @@ import { AgentConfigService, validate } from './config/settings.js';
 import { DiagnoseService } from './diagnose/diagnose.service.js';
 import { ExecService } from './exec/exec.service.js';
 import { InstallService } from './install/install.service.js';
+import { InventoryService } from './inventory/inventory.service.js';
 import { PanelClient } from './panel/panel-client.js';
 import { ProbeService } from './probe/probe.service.js';
 import { DeployService } from './provision/deploy.service.js';
@@ -62,6 +63,7 @@ import { UpdateService } from './update/update.service.js';
     PropagateService,
     DiagnoseService,
     ExecService,
+    InventoryService,
   ],
 })
 export class AgentModule {

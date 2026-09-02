@@ -7,5 +7,6 @@ export type {
   CommandLibraryEntry,
   CommandView,
   DiscoveryView,
+  InventoryView,
 } from './operator.js';
 export { startPanel, type Panel, type PanelOptions } from './panel.js';

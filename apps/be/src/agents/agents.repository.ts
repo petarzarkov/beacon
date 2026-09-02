@@ -7,6 +7,7 @@ import { SETTLED_STATES, type CommandState } from '@beacon/contract';
 import {
   agentCommands,
   agentEvents,
+  agentInventory,
   agentMetrics,
   agents,
   alertRules,
@@ -17,6 +18,7 @@ import {
   usedGrants,
   type AgentCommandRow,
   type AgentEventRow,
+  type AgentInventoryRow,
   type AgentMetricRow,
   type AgentRow,
   type AlertRow,
@@ -28,6 +30,7 @@ import {
 export type {
   AgentCommandRow,
   AgentEventRow,
+  AgentInventoryRow,
   AgentMetricRow,
   AgentRow,
   AlertRow,
@@ -149,6 +152,11 @@ export class AgentsRepository {
       mem_bytes INTEGER NOT NULL,
       cpu_percent REAL,
       load1 REAL NOT NULL
+    )`);
+    this.db.run(sql`CREATE TABLE IF NOT EXISTS agent_inventory (
+      agent_id TEXT PRIMARY KEY REFERENCES agents(id) ON DELETE CASCADE,
+      data TEXT NOT NULL,
+      received_at TEXT NOT NULL
     )`);
     this.db.run(sql`CREATE TABLE IF NOT EXISTS discovered_hosts (
       id TEXT PRIMARY KEY,
@@ -478,6 +486,31 @@ export class AgentsRepository {
       .where(lt(agentMetrics.at, beforeIso))
       .returning()
       .all().length;
+  }
+
+  // --- Inventory -------------------------------------------------------------
+
+  /** Store a host's latest inventory snapshot, replacing any earlier one. */
+  recordInventory(row: AgentInventoryRow): void {
+    this.db
+      .insert(agentInventory)
+      .values(row)
+      .onConflictDoUpdate({
+        target: agentInventory.agentId,
+        set: { data: row.data, receivedAt: row.receivedAt },
+      })
+      .run();
+  }
+
+  /** The latest inventory for one host, or null if it has never reported one. */
+  inventoryFor(agentId: string): AgentInventoryRow | null {
+    return (
+      this.db
+        .select()
+        .from(agentInventory)
+        .where(eq(agentInventory.agentId, agentId))
+        .get() ?? null
+    );
   }
 
   queue(row: AgentCommandRow): void {

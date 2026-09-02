@@ -108,6 +108,7 @@ export const AGENT_COMMANDS = [
   'deploy',
   'diagnose',
   'exec',
+  'inventory',
 ] as const;
 
 export type AgentCommandName = (typeof AGENT_COMMANDS)[number];
@@ -305,6 +306,50 @@ export interface AgentMetricPoint {
   readonly cpuPercent: number | null;
   /** The host's 1-minute load, for context around the agent's own numbers. */
   readonly load1: number;
+}
+
+// --- Inventory ---------------------------------------------------------------
+// A slow-changing snapshot of what a host *is*, as against a report, which is
+// what it is *doing right now*. Reported out of band - once at startup and on an
+// `inventory` command - so a report stays small and machine-neutral, and the
+// panel keeps the latest snapshot per host.
+
+/** One mounted filesystem, as the agent sees it. */
+export interface InventoryDisk {
+  readonly mount: string;
+  readonly fsType: string;
+  readonly totalBytes: number;
+  readonly usedBytes: number;
+}
+
+/** One network interface: its hardware address and the IPs bound to it. */
+export interface InventoryNic {
+  readonly name: string;
+  readonly mac: string;
+  readonly addresses: readonly string[];
+}
+
+/** The hardware and OS facts of one host, collected by its agent. */
+export interface AgentInventory {
+  readonly hostname: string;
+  /** `os.platform()`: `linux`, `darwin`, `win32`. */
+  readonly platform: string;
+  /** `os.release()`: the kernel / OS build string. */
+  readonly osRelease: string;
+  readonly arch: string;
+  readonly cpuModel: string;
+  readonly cpuCores: number;
+  readonly memTotalBytes: number;
+  readonly disks: readonly InventoryDisk[];
+  readonly nics: readonly InventoryNic[];
+  readonly collectedAt: string;
+}
+
+/** A host's inventory, as the console sees it. */
+export interface InventoryView extends AgentInventory {
+  readonly agentId: string;
+  /** When the panel last received this snapshot. */
+  readonly receivedAt: string;
 }
 
 /** A lifecycle event, as the console sees it. */

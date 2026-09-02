@@ -117,6 +117,44 @@ export const eventsRequest = z
     description: 'Lifecycle moments an agent reports: it started, it stopped.',
   });
 
+export const inventoryReport = z
+  .object({
+    hostname: z.string().min(1).max(255),
+    platform: z.string().min(1).max(64),
+    osRelease: z.string().min(1).max(255),
+    arch: z.string().min(1).max(32),
+    cpuModel: z.string().max(255),
+    cpuCores: z.number().int().min(0).max(4096),
+    memTotalBytes: z.number().int().min(0),
+    disks: z
+      .array(
+        z.object({
+          mount: z.string().max(255),
+          fsType: z.string().max(64),
+          totalBytes: z.number().int().min(0),
+          usedBytes: z.number().int().min(0),
+        }),
+      )
+      .max(128),
+    nics: z
+      .array(
+        z.object({
+          name: z.string().max(64),
+          mac: z.string().max(64),
+          addresses: z.array(z.string().max(64)).max(32),
+        }),
+      )
+      .max(128),
+    collectedAt: z.iso.datetime(),
+  })
+  .meta({
+    id: 'AgentInventory',
+    description:
+      'The hardware and OS facts of one host, collected by its agent',
+  });
+
+export const inventoryRoute = { body: inventoryReport } as const;
+
 export const discoveredHost = z.object({
   address: z.ipv4(),
   ports: z.array(z.number().int().min(1).max(65535)).max(32),
@@ -144,11 +182,16 @@ export const releaseManifest = z
   });
 
 /**
- * Only `report`, `update` and `restart` are queued bare. `discover` takes a
- * subnet and `deploy` takes a credential, so both have routes of their own that
- * can require one.
+ * Queued bare, with no argument: `report`, `update`, `restart` and `inventory`.
+ * `discover` takes a subnet and `deploy` a credential, so both have routes of
+ * their own that can require one; `diagnose` and `exec` likewise.
  */
-export const queueableCommand = z.enum(['report', 'update', 'restart']);
+export const queueableCommand = z.enum([
+  'report',
+  'update',
+  'restart',
+  'inventory',
+]);
 
 export const deployCredential = z
   .object({

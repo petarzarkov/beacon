@@ -35,10 +35,11 @@ should not have a dependency that can take it down.
 - `src/agents/` — **the feature.** Two controllers, because an agent and an
   operator are different callers with different credentials:
   - `agent.controller.ts` — `/api/agent/*`, token-checked, `@Public()` (no
-    session). Enrol, report, outcomes, events, discovered, release + binary.
+    session). Enrol, report, outcomes, events, inventory, discovered, release +
+    binary.
   - `fleet.controller.ts` — `/api/agents/*`, `@UseGuards(SessionGuard)`. The
-    console's API: list, one agent + its events + metric history, commands,
-    discovered, deployments, read-only diagnostics, the command library
+    console's API: list, one agent + its events + metric history + inventory,
+    commands, discovered, deployments, read-only diagnostics, the command library
     (`@Roles('admin')` to curate) and `exec` (Tier 1 library, Tier 2 free-form),
     plus alerting (rules + alerts + the notification webhook).
   - `alerts.service.ts` — alert rules, evaluation (thresholds on report, silence

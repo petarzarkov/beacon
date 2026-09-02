@@ -1,6 +1,7 @@
 import type {
   AgentCommandRow,
   AgentEventRow,
+  AgentInventoryRow,
   AgentMetricRow,
   AgentRow,
   CommandLibraryRow,
@@ -13,6 +14,7 @@ import type {
   CommandLibraryEntry,
   CommandView,
   DiscoveryView,
+  InventoryView,
 } from '@beacon/contract';
 
 /**
@@ -106,6 +108,13 @@ export const toMetricPoint = (row: AgentMetricRow): AgentMetricPoint => ({
   memBytes: row.memBytes,
   cpuPercent: row.cpuPercent,
   load1: row.load1,
+});
+
+/** The stored snapshot plus who and when. The JSON blob is the wire shape already. */
+export const toInventoryView = (row: AgentInventoryRow): InventoryView => ({
+  ...row.data,
+  agentId: row.agentId,
+  receivedAt: row.receivedAt,
 });
 
 export const toDiscoveryView = (row: DiscoveredHostRow): DiscoveryView => ({

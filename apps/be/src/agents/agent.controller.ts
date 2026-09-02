@@ -23,6 +23,7 @@ import {
   discoveredRoute,
   enrolRoute,
   eventsRoute,
+  inventoryRoute,
   outcomesRoute,
   reportRoute,
 } from './agents.schemas.js';
@@ -146,6 +147,20 @@ export class AgentController {
   discovered(input: Input<typeof discoveredRoute>): { recorded: number } {
     const agent = this.#agent(input.req);
     return { recorded: this.agents.recordDiscoveries(agent, input.body.hosts) };
+  }
+
+  /**
+   * A host's inventory, out of band from the report loop: sent once at startup
+   * and whenever an `inventory` command asks for a refresh. Kept apart from a
+   * report because it changes rarely and is larger, so folding it into every
+   * report would cost the fleet bandwidth for data that almost never moves.
+   */
+  @ApiDoc({ summary: 'Report this host’s hardware and OS inventory' })
+  @Post('/inventory', inventoryRoute)
+  inventory(input: Input<typeof inventoryRoute>): { recorded: true } {
+    const agent = this.#agent(input.req);
+    this.agents.recordInventory(agent, input.body);
+    return { recorded: true };
   }
 
   @ApiDoc({

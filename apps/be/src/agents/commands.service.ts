@@ -90,10 +90,13 @@ export class CommandsService {
     return toCommandView(row);
   }
 
-  /** `report`, `update` and `restart`: the whole instruction is the name. */
+  /**
+   * `report`, `update`, `restart` and `inventory`: the whole instruction is the
+   * name, with no argument to carry.
+   */
   queue(
     agentId: string,
-    command: 'report' | 'update' | 'restart',
+    command: 'report' | 'update' | 'restart' | 'inventory',
     issuedBy: string | null,
   ): CommandView {
     this.#requireAgent(agentId);

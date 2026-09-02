@@ -4,6 +4,7 @@ import { Interval } from '@dunx/infra/schedule';
 import { AppConfigService } from '../config.js';
 import type {
   AgentEventReport,
+  AgentInventory,
   DiscoveredHost,
   EnrolRequest,
   EnrolResponse,
@@ -17,11 +18,13 @@ import type {
   AgentMetricPoint,
   AgentView,
   DiscoveryView,
+  InventoryView,
 } from '@beacon/contract';
 import {
   toAgentEventView,
   toAgentView,
   toDiscoveryView,
+  toInventoryView,
   toMetricPoint,
 } from './agents.views.js';
 import { CommandsService } from './commands.service.js';
@@ -353,6 +356,33 @@ export class AgentsService implements OnInit {
       throw new HttpError(HttpStatusCode.NOT_FOUND, `No agent ${id}`);
     }
     return this.repo.eventsFor(id, limit).map(toAgentEventView);
+  }
+
+  /**
+   * A host's latest inventory snapshot, out of band from the report loop. One
+   * row per agent - a fresh snapshot replaces the last, since inventory is a
+   * current-state fact, not a time series.
+   */
+  recordInventory(agent: AgentRow, inventory: AgentInventory): void {
+    this.repo.recordInventory({
+      agentId: agent.id,
+      data: inventory,
+      receivedAt: new Date().toISOString(),
+    });
+    this.logger.info('agent inventory recorded', {
+      agentId: agent.id,
+      cpuCores: inventory.cpuCores,
+      disks: inventory.disks.length,
+    });
+  }
+
+  /** A host's stored inventory, or null if it has never reported one. */
+  inventory(id: string): InventoryView | null {
+    if (this.repo.find(id) === null) {
+      throw new HttpError(HttpStatusCode.NOT_FOUND, `No agent ${id}`);
+    }
+    const row = this.repo.inventoryFor(id);
+    return row === null ? null : toInventoryView(row);
   }
 
   /** A window of an agent's metric history, oldest first, for the trend charts. */

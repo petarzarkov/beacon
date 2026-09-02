@@ -21,6 +21,7 @@ import type {
   CommandView,
   DiscoveryView,
   FleetSettings,
+  InventoryView,
   ReleaseManifest,
 } from '@beacon/contract';
 import {
@@ -247,6 +248,14 @@ export class FleetController {
   @Get('/:id/metrics', agentMetricsRoute)
   metrics(input: Input<typeof agentMetricsRoute>): readonly AgentMetricPoint[] {
     return this.agents.metrics(input.params.id, input.query.minutes);
+  }
+
+  @ApiDoc({
+    summary: 'One agent’s hardware and OS inventory, or null if none reported',
+  })
+  @Get('/:id/inventory', oneAgentRoute)
+  inventory(input: Input<typeof oneAgentRoute>): InventoryView | null {
+    return this.agents.inventory(input.params.id);
   }
 
   /**

@@ -13,6 +13,7 @@ import { IdentityStore } from '../config/identity.js';
 import { AgentConfigService } from '../config/settings.js';
 import { DiagnoseService } from '../diagnose/diagnose.service.js';
 import { ExecService } from '../exec/exec.service.js';
+import { InventoryService } from '../inventory/inventory.service.js';
 import { PanelClient } from '../panel/panel-client.js';
 import { ProbeService } from '../probe/probe.service.js';
 import { DeployService } from '../provision/deploy.service.js';
@@ -54,6 +55,7 @@ export class RunnerService {
     private readonly propagation: PropagateService,
     private readonly diagnostics: DiagnoseService,
     private readonly exec: ExecService,
+    private readonly inventory: InventoryService,
     private readonly logger: Logger,
   ) {}
 
@@ -89,6 +91,10 @@ export class RunnerService {
       'startup',
       `agent ${this.config.get('version')} started (pid ${process.pid})`,
     );
+    // Inventory rides the same first moments as startup. Slow-changing, so once
+    // per process is enough - an update restarts the agent, so a new build
+    // re-reports what it found.
+    await this.#reportInventory();
     this.#armPropagation();
 
     let intervalMs = this.config.get('reportIntervalMs');
@@ -131,6 +137,15 @@ export class RunnerService {
         kind,
         err: message(error),
       });
+    }
+  }
+
+  /** Best-effort inventory report. Like startup, a lost one is not a failure. */
+  async #reportInventory(): Promise<void> {
+    try {
+      await this.panel.inventory(this.inventory.collect());
+    } catch (error) {
+      this.logger.warn('could not report inventory', { err: message(error) });
     }
   }
 
@@ -263,6 +278,12 @@ export class RunnerService {
         if (command.payload === null)
           throw new Error('exec command has no payload');
         return this.exec.run((command.payload as ExecPayload).argv);
+      }
+
+      case 'inventory': {
+        const snapshot = this.inventory.collect();
+        await this.panel.inventory(snapshot);
+        return `reported inventory: ${snapshot.cpuCores} cores, ${snapshot.disks.length} disk(s)`;
       }
 
       // Handled by the caller, which sends outcomes before the process dies.

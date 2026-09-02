@@ -3,6 +3,7 @@ import {
   AGENT_HEADER,
   ENROLMENT_HEADER,
   type AgentEventReport,
+  type AgentInventory,
   type CommandOutcome,
   type DiscoveredHost,
   type EnrolRequest,
@@ -153,6 +154,19 @@ export class PanelClient {
       method: 'POST',
       headers: this.#authed(),
       body: JSON.stringify({ hosts }),
+    });
+  }
+
+  /**
+   * This host's inventory, out of band from the report loop: sent once at
+   * startup and on an `inventory` command. Slow-changing, so the panel keeps the
+   * latest snapshot rather than a series.
+   */
+  inventory(inventory: AgentInventory): Promise<{ recorded: true }> {
+    return this.#call<{ recorded: true }>('api/agent/inventory', {
+      method: 'POST',
+      headers: this.#authed(),
+      body: JSON.stringify(inventory),
     });
   }
 

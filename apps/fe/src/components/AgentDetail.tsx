@@ -39,6 +39,7 @@ import {
 import { bytes, duration, relativeTime } from '../lib/format';
 import { AgentCommands } from './AgentCommands';
 import { AgentDiagnostics } from './AgentDiagnostics';
+import { AgentInventory } from './AgentInventory';
 import { AgentTrends } from './AgentTrends';
 import { CommandBadge } from './CommandBadge';
 
@@ -296,6 +297,10 @@ export const AgentDetail = ({
 
       <Paper withBorder radius="md" p="md">
         <AgentTrends agentId={agentId} />
+      </Paper>
+
+      <Paper withBorder radius="md" p="md">
+        <AgentInventory agentId={agentId} />
       </Paper>
 
       <Paper withBorder radius="md" p="md">

@@ -15,6 +15,7 @@ import type {
   DiagnoseProbe,
   DiscoveryView,
   FleetSettings,
+  InventoryView,
   ReleaseManifest,
 } from '@beacon/contract';
 import { http } from './http';
@@ -30,6 +31,7 @@ export type {
   CommandView,
   DiscoveryView,
   FleetSettings,
+  InventoryView,
   ReleaseManifest,
 };
 
@@ -37,7 +39,7 @@ export type {
  * The commands an operator can queue bare. `discover` and `deploy` take an
  * argument, so they have their own calls below.
  */
-export type QueueableCommand = 'report' | 'update' | 'restart';
+export type QueueableCommand = 'report' | 'update' | 'restart' | 'inventory';
 
 export interface DeployInput {
   readonly target: string;
@@ -86,6 +88,20 @@ export const useAgentEvents = (
     queryFn: () =>
       http.get<readonly AgentEventView[]>(`/api/agents/${id}/events?limit=50`),
     refetchInterval: LIVE_MS,
+  });
+
+/**
+ * One agent's hardware and OS inventory, or null if it has never reported one.
+ * Slow-changing, so no live refetch - the detail page reads it once, and the
+ * refresh button re-queues an `inventory` command when an operator wants it.
+ */
+export const useAgentInventory = (
+  id: string,
+): UseQueryResult<InventoryView | null> =>
+  useQuery({
+    queryKey: [...keys.agents, id, 'inventory'],
+    queryFn: () =>
+      http.get<InventoryView | null>(`/api/agents/${id}/inventory`),
   });
 
 /** One agent's metric history over the last `minutes`, oldest first, live. */

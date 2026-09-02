@@ -8,6 +8,7 @@ import type {
   CommandView,
   DiagnoseProbe,
   DiscoveryView,
+  InventoryView,
   ReleaseManifest,
 } from '@beacon/contract';
 
@@ -20,6 +21,7 @@ export type {
   CommandLibraryEntry,
   CommandView,
   DiscoveryView,
+  InventoryView,
 };
 
 /** What a new alert rule looks like from a test. */
@@ -120,6 +122,10 @@ export class Operator {
     );
   }
 
+  inventory(id: string): Promise<InventoryView | null> {
+    return this.#json<InventoryView | null>(`/api/agents/${id}/inventory`);
+  }
+
   commands(
     state: 'open' | 'recent' = 'open',
     limit = 50,
@@ -131,7 +137,7 @@ export class Operator {
 
   queue(
     agentId: string,
-    command: 'report' | 'update' | 'restart',
+    command: 'report' | 'update' | 'restart' | 'inventory',
   ): Promise<CommandView> {
     return this.#json<CommandView>(`/api/agents/${agentId}/commands`, {
       method: 'POST',

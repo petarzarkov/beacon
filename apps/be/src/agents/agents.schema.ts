@@ -8,6 +8,7 @@ import {
 import type {
   AgentCommandName,
   AgentEventKind,
+  AgentInventory,
   AlertComparator,
   AlertMetric,
   AlertRuleKind,
@@ -217,6 +218,21 @@ export const agentMetrics = sqliteTable(
 );
 
 /**
+ * The latest inventory snapshot per host - one row per agent, upserted. Kept
+ * apart from `agents.last_report` because inventory changes rarely and arrives
+ * out of band (at startup, or on an `inventory` command), where a report is
+ * every interval; the whole snapshot is one JSON blob, so a field the agent adds
+ * is not lost before the panel is taught to read it.
+ */
+export const agentInventory = sqliteTable('agent_inventory', {
+  agentId: text('agent_id')
+    .primaryKey()
+    .references(() => agents.id, { onDelete: 'cascade' }),
+  data: text('data', { mode: 'json' }).$type<AgentInventory>().notNull(),
+  receivedAt: text('received_at').notNull(),
+});
+
+/**
  * A host an agent found on its subnet. Recorded, never acted on: what turns one
  * of these into a managed machine is a human approving a deployment.
  */
@@ -274,6 +290,7 @@ export const usedGrants = sqliteTable('used_grants', {
 export type AgentRow = typeof agents.$inferSelect;
 export type AgentCommandRow = typeof agentCommands.$inferSelect;
 export type AgentEventRow = typeof agentEvents.$inferSelect;
+export type AgentInventoryRow = typeof agentInventory.$inferSelect;
 export type AgentMetricRow = typeof agentMetrics.$inferSelect;
 export type CommandLibraryRow = typeof commandLibrary.$inferSelect;
 export type AlertRuleRow = typeof alertRules.$inferSelect;
