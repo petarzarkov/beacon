@@ -48,7 +48,12 @@ RUN mkdir -p /run/sshd \
   && sed -i 's/#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config \
   && sed -i 's/#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config \
   && echo "root:${ROOT_PASSWORD}" | chpasswd \
-  && systemctl enable ssh
+  && systemctl enable ssh \
+  # Strip the baked machine-id so systemd mints a unique one per container at
+  # boot - otherwise every neighbour built from this one image shares an id and
+  # they all enrol onto a single agent row, each re-enrolment invalidating the
+  # last (see the machine-id note in the agent's settings.ts).
+  && rm -f /etc/machine-id /var/lib/dbus/machine-id
 # systemd wants this signal to shut down cleanly, and its own PID 1.
 STOPSIGNAL SIGRTMIN+3
 CMD ["/sbin/init"]
