@@ -175,7 +175,7 @@ export const validate = (env: ConfigSource): AppConfig => {
 
   return {
     port: value.PORT,
-    appName: 'dunxon-be',
+    appName: 'beacon-be',
     log: {
       level: value.LOG_LEVEL,
       file: value.LOG_FILE,

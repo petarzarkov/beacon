@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { AppFactory, Module } from '@dunx/core';
-import type { DiscoveredHost } from '@dunxon/contract';
+import type { DiscoveredHost } from '@beacon/contract';
 import { AgentModule } from '../agent.module.js';
 import { DiscoverService } from './discover.service.js';
 import type { Installer, InstallTarget } from './installer.js';

@@ -9,7 +9,7 @@ end to end. Four containers on a private `/24`:
 - **neighbour-1..3** — bare **systemd** hosts running only `sshd`
 
 The seed sweeps the subnet, finds the neighbours on port 22, copies the agent
-binary over, runs `dunxon-agent install` on each (real systemd units, a real run
+binary over, runs `beacon-agent install` on each (real systemd units, a real run
 user), and each neighbour enrols. Because the seed is the one that swept and
 found their addresses, the panel attributes each to the seed — so the **Lineage**
 view draws the tree of who installed whom.
@@ -23,7 +23,7 @@ docker compose -f deploy/testbed/docker-compose.yml up --build
 First build compiles the agent binary and the console, so it takes a few minutes.
 Then open **http://localhost:3001** and sign in:
 
-- **admin@dunxon.local** / **dunxon-testbed**
+- **admin@beacon.local** / **beacon-testbed**
 
 Within a sweep interval (~15 s) the three neighbours appear under **Agents**, and
 the **Lineage** tab shows them nested beneath `seed`. The seed carries a
@@ -37,7 +37,7 @@ docker compose -f deploy/testbed/docker-compose.yml down -v
 
 ## What it proves
 
-- The real SSH path: `scp` the binary, `sudo dunxon-agent install`, systemd
+- The real SSH path: `scp` the binary, `sudo beacon-agent install`, systemd
   brings the service up, the agent enrols.
 - Lineage for **autonomous** propagation: neighbours enrol with the shared token
   (no panel grant), yet the panel attributes each to the seed from the sweep.

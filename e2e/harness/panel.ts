@@ -5,7 +5,7 @@ import type { HttpApp } from '@dunx/http';
 import { createApp } from '@be/main.js';
 import { createOperator } from '@be/auth/create-operator.js';
 import { mintGrant } from '@be/agents/enrolment.js';
-import { MANIFEST_FILE, type ReleaseManifest } from '@dunxon/contract';
+import { MANIFEST_FILE, type ReleaseManifest } from '@beacon/contract';
 import { Operator } from './operator.js';
 
 export interface PanelOptions {
@@ -71,7 +71,7 @@ const DEFAULTS = {
 export const startPanel = async (
   options: PanelOptions = {},
 ): Promise<Panel> => {
-  const releaseDir = mkdtempSync(join(tmpdir(), 'dunxon-e2e-release-'));
+  const releaseDir = mkdtempSync(join(tmpdir(), 'beacon-e2e-release-'));
   const manifest = publishRelease(releaseDir, options.release ?? false);
 
   const enrolmentToken = options.enrolmentToken ?? DEFAULTS.enrolmentToken;
@@ -149,7 +149,7 @@ const publishRelease = (
 ): ReleaseManifest | null => {
   if (release === false || release === undefined) return null;
 
-  const file = 'dunxon-agent';
+  const file = 'beacon-agent';
   const body = release.body ?? `#!/bin/sh\necho ${release.version}\n`;
   const bytes = new TextEncoder().encode(body);
   writeFileSync(join(dir, file), bytes);

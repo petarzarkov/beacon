@@ -19,7 +19,7 @@ import type {
   DiscoveryView,
   FleetSettings,
   ReleaseManifest,
-} from '@dunxon/contract';
+} from '@beacon/contract';
 import {
   agentEventsRoute,
   agentMetricsRoute,

@@ -5,7 +5,7 @@
 #   seed       - a single agent, propagation armed, with ssh/sshpass to reach neighbours
 #   neighbour  - a bare systemd host with sshd; the seed installs the agent onto it
 #
-# The neighbour stage is a real systemd host so `dunxon-agent install` runs the
+# The neighbour stage is a real systemd host so `beacon-agent install` runs the
 # way it does in production - writing units, creating the run user, starting the
 # service - which is the one part of propagation a single dev host cannot fake.
 
@@ -25,7 +25,7 @@ EXPOSE 3000
 # Run through the workspace filter so the panel's own `bunfig.toml` preload (the
 # DI transform) applies, and its cwd is `apps/be` - which is where the default
 # release dir and database resolve to, and where the agent binary was published.
-CMD ["sh", "-lc", "bun run --filter dunxon-be create:admin -- --email admin@dunxon.local --password dunxon-testbed --name Admin; exec bun run --filter dunxon-be start"]
+CMD ["sh", "-lc", "bun run --filter beacon-be create:admin -- --email admin@beacon.local --password beacon-testbed --name Admin; exec bun run --filter beacon-be start"]
 
 # ---- seed: one agent that spreads --------------------------------------------
 FROM ubuntu:24.04 AS seed
@@ -33,9 +33,9 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
      openssh-client sshpass ca-certificates libstdc++6 \
   && rm -rf /var/lib/apt/lists/*
-COPY --from=build /app/apps/be/data/agent/dunxon-agent /usr/local/bin/dunxon-agent
-RUN chmod +x /usr/local/bin/dunxon-agent
-CMD ["dunxon-agent", "run"]
+COPY --from=build /app/apps/be/data/agent/beacon-agent /usr/local/bin/beacon-agent
+RUN chmod +x /usr/local/bin/beacon-agent
+CMD ["beacon-agent", "run"]
 
 # ---- neighbour: a bare systemd host with sshd --------------------------------
 FROM ubuntu:24.04 AS neighbour
@@ -43,7 +43,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
      systemd systemd-sysv openssh-server sudo passwd iproute2 ca-certificates libstdc++6 \
   && rm -rf /var/lib/apt/lists/*
-ARG ROOT_PASSWORD=dunxon-testbed
+ARG ROOT_PASSWORD=beacon-testbed
 RUN mkdir -p /run/sshd \
   && sed -i 's/#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config \
   && sed -i 's/#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config \

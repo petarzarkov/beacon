@@ -10,7 +10,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconStethoscope } from '@tabler/icons-react';
 import { useState } from 'react';
-import { DIAGNOSE_PROBES, type DiagnoseProbe } from '@dunxon/contract';
+import { DIAGNOSE_PROBES, type DiagnoseProbe } from '@beacon/contract';
 import { useCommands, useDiagnose } from '../api/agents';
 import { CommandBadge } from './CommandBadge';
 import { relativeTime } from '../lib/format';

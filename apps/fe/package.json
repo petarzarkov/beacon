@@ -1,5 +1,5 @@
 {
-  "name": "dunxon-fe",
+  "name": "beacon-fe",
   "version": "0.0.0",
   "private": true,
   "description": "Operator console for the agent fleet: what is reporting, and the controls to act on it.",
@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@dunxon/contract": "workspace:*",
+    "@beacon/contract": "workspace:*",
     "@mantine/core": "^8.3.5",
     "@mantine/hooks": "^8.3.5",
     "@mantine/notifications": "^8.3.5",

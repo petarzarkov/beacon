@@ -1,7 +1,7 @@
 import { SyncDatabase } from '@dunx/infra/db';
 import { and, count, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 import * as schema from '../database/schema.js';
-import { SETTLED_STATES, type CommandState } from '@dunxon/contract';
+import { SETTLED_STATES, type CommandState } from '@beacon/contract';
 import {
   agentCommands,
   agentEvents,

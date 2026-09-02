@@ -1,5 +1,5 @@
 import { Logger } from '@dunx/core';
-import type { DiagnoseProbe } from '@dunxon/contract';
+import type { DiagnoseProbe } from '@beacon/contract';
 
 /**
  * The read-only diagnostics an operator can run on this host.

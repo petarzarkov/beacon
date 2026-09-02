@@ -65,7 +65,7 @@ export class Agent {
     private readonly panel: Panel,
     private readonly options: AgentOptions,
   ) {
-    this.#dir = mkdtempSync(join(tmpdir(), 'dunxon-e2e-agent-'));
+    this.#dir = mkdtempSync(join(tmpdir(), 'beacon-e2e-agent-'));
     this.stateFile = join(this.#dir, 'identity.json');
     this.machineId = options.machineId ?? `e2e-${crypto.randomUUID()}`;
   }

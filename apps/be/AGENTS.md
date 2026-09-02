@@ -1,4 +1,4 @@
-# dunxon-be
+# beacon-be
 
 The panel: the control plane, the API, and the release host for the agent fleet.
 It also serves the operator console. A [dunx](https://github.com/petarzarkov/dunx)
@@ -62,7 +62,7 @@ should not have a dependency that can take it down.
 - `bunfig.toml` — the one preload line constructor injection needs.
 
 The shared wire types (`HostReport`, the command vocabulary, the console view
-shapes) live in **`@dunxon/contract`** (`libs/contract`), not here — the agent and
+shapes) live in **`@beacon/contract`** (`libs/contract`), not here — the agent and
 console read the same definitions. The zod schemas in `agents.schemas.ts` validate
 requests into those shapes.
 

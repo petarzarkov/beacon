@@ -1,5 +1,5 @@
 /**
- * `@dunxon/contract` - the wire contract between panel, agent and console, and
+ * `@beacon/contract` - the wire contract between panel, agent and console, and
  * the one definition of it.
  *
  * **This package imports nothing, deliberately.** All three apps depend on it,

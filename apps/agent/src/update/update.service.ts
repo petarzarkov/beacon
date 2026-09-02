@@ -46,7 +46,7 @@ export class UpdateService {
 
     // Production asks the root update unit through the one sudo rule `install`
     // grants. The override runs the swap directly, for a host without systemd -
-    // it is exactly what that unit's `ExecStart` does (`dunxon-agent update`), so
+    // it is exactly what that unit's `ExecStart` does (`beacon-agent update`), so
     // the operator-driven path is tested rather than left to a real machine.
     const trigger = this.config.get('updateTriggerCommand');
     const command =

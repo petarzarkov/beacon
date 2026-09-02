@@ -4,7 +4,7 @@
 #   bun install && bun run build   (builds the FE into apps/be/public and the
 #                                   agent into apps/be/data/agent)
 [Unit]
-Description=dunxon panel (fleet control plane + console + release host)
+Description=beacon panel (fleet control plane + console + release host)
 After=network-online.target
 Wants=network-online.target
 
@@ -12,12 +12,12 @@ Wants=network-online.target
 Type=simple
 # The user the panel runs as. Not root: it only needs to read its own files and
 # bind a port a reverse proxy sits in front of.
-User=dunxon
+User=beacon
 # The repo checkout. `bun run start` must run from here so bunfig.toml's
 # @dunx/transform preload loads - without it every provider fails at boot.
-WorkingDirectory=/opt/dunxon/apps/be
+WorkingDirectory=/opt/beacon/apps/be
 # Secrets and public config live in a 0600 file, not in this unit.
-EnvironmentFile=/etc/dunxon-panel.env
+EnvironmentFile=/etc/beacon-panel.env
 ExecStart=/usr/local/bin/bun run start
 Restart=always
 RestartSec=5

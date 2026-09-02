@@ -1,5 +1,5 @@
 import { Logger } from '@dunx/core';
-import type { DeployPayload } from '@dunxon/contract';
+import type { DeployPayload } from '@beacon/contract';
 import { PanelClient } from '../panel/panel-client.js';
 import { SshInstaller } from './installer.js';
 

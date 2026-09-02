@@ -2,7 +2,7 @@ import { Logger } from '@dunx/core';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { DeployCredential } from '@dunxon/contract';
+import type { DeployCredential } from '@beacon/contract';
 import { SERVICE_NAME } from '../config/settings.js';
 
 /** One upload plus one install. Generous: the binary is ~80 MB over a LAN. */
@@ -73,7 +73,7 @@ export class SshInstaller implements Installer {
   /**
    * Whether the target already runs the agent, asked before installing.
    *
-   * `dunxon-agent version` answers for any user and before the container is
+   * `beacon-agent version` answers for any user and before the container is
    * built, precisely so this question is cheap and cannot false-negative into a
    * reinstall loop. A host that answers is left alone; one that does not, or that
    * cannot be reached, is a candidate.
@@ -81,7 +81,7 @@ export class SshInstaller implements Installer {
   async isInstalled(
     target: Omit<InstallTarget, 'panelUrl' | 'enrolmentToken'>,
   ): Promise<boolean> {
-    const workspace = mkdtempSync(join(tmpdir(), 'dunxon-probe-'));
+    const workspace = mkdtempSync(join(tmpdir(), 'beacon-probe-'));
     try {
       const auth = this.#authArgs(target.credential, workspace);
       const result = await this.#trySsh(
@@ -97,7 +97,7 @@ export class SshInstaller implements Installer {
 
   /** Copy the binary over and run its installer. Returns one line of detail. */
   async install(target: InstallTarget): Promise<string> {
-    const workspace = mkdtempSync(join(tmpdir(), 'dunxon-install-'));
+    const workspace = mkdtempSync(join(tmpdir(), 'beacon-install-'));
     try {
       const binary = join(workspace, SERVICE_NAME);
       writeFileSync(binary, await this.binary());

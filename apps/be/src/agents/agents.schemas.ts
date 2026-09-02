@@ -3,12 +3,12 @@ import {
   AGENT_COMMANDS,
   AGENT_EVENT_KINDS,
   DIAGNOSE_PROBES,
-} from '@dunxon/contract';
+} from '@beacon/contract';
 
 /**
  * The route schemas, which are also the OpenAPI document. Everything an agent or
  * the console sends is validated here before a service sees it; the types in
- * `@dunxon/contract` describes the same shapes for the binary and the console,
+ * `@beacon/contract` describes the same shapes for the binary and the console,
  * which cannot carry zod. The view types live there too, so these schemas do not
  * restate them.
  */

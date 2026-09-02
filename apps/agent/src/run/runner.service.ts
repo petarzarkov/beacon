@@ -7,7 +7,7 @@ import type {
   DeployPayload,
   DiagnosePayload,
   DiscoverPayload,
-} from '@dunxon/contract';
+} from '@beacon/contract';
 import { IdentityStore } from '../config/identity.js';
 import { AgentConfigService } from '../config/settings.js';
 import { DiagnoseService } from '../diagnose/diagnose.service.js';

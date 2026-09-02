@@ -10,7 +10,7 @@ import pkg from '../../package.json';
  */
 export const AGENT_VERSION: string = pkg.version;
 
-export const SERVICE_NAME = 'dunxon-agent';
+export const SERVICE_NAME = 'beacon-agent';
 
 /** Mode `0600`, because it holds the enrolment token. Written by `install`. */
 export const CONFIG_PATH = `/etc/${SERVICE_NAME}/agent.conf`;
@@ -25,7 +25,7 @@ export const UPDATE_SERVICE_PATH = `/etc/systemd/system/${UPDATE_SERVICE_NAME}`;
 export const UPDATE_TIMER_PATH = `/etc/systemd/system/${UPDATE_TIMER_NAME}`;
 
 /** The unix user the service runs as. Not root - see `install.service.ts`. */
-export const DEFAULT_RUN_USER = 'dunxon';
+export const DEFAULT_RUN_USER = 'beacon';
 
 const schema = z.object({
   /**
@@ -72,7 +72,7 @@ const schema = z.object({
    *
    * A real host never sets this - the default is the only sane place for it - but
    * it has to be overridable, because the self-update swap is otherwise
-   * untestable: it renames a file over `/usr/local/bin/dunxon-agent`, which no
+   * untestable: it renames a file over `/usr/local/bin/beacon-agent`, which no
    * test can own. The end-to-end suite points it at a temp path and drives the
    * real swap against that. See `update.service.ts`.
    */
@@ -89,12 +89,12 @@ const schema = z.object({
    */
   AGENT_RESTART_COMMAND: z.string().min(1).optional(),
   /**
-   * Run in place of `sudo systemctl start dunxon-agent-update.service` when an
+   * Run in place of `sudo systemctl start beacon-agent-update.service` when an
    * unprivileged service collects a queued `update`.
    *
    * In production the service cannot swap its own binary - that is the whole
    * point of the privilege split - so it asks the root update unit to. That unit
-   * runs `dunxon-agent update`, i.e. the same swap this file performs. With no
+   * runs `beacon-agent update`, i.e. the same swap this file performs. With no
    * systemd to ask, the operator-driven `update` flow is untestable; the suite
    * points this at a script that runs the real swap, so the queued path is
    * proven end to end rather than only the swap in isolation. Unset in production.
@@ -152,7 +152,7 @@ export interface AgentConfig {
   readonly stateFile: string | undefined;
   readonly panelTimeoutMs: number;
   readonly machineId: string | undefined;
-  /** The binary a self-update replaces. Default `/usr/local/bin/dunxon-agent`. */
+  /** The binary a self-update replaces. Default `/usr/local/bin/beacon-agent`. */
   readonly installPath: string;
   /** Overrides `systemctl restart` after an update. Unset in production. */
   readonly restartCommand: string | undefined;

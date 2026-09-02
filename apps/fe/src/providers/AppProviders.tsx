@@ -12,7 +12,7 @@ import { theme } from '../theme';
  * per browser), notifications, and React Query. `RouterProvider` is mounted
  * inside this in `main.tsx`, so a route can use a query and a toast freely.
  */
-const colorSchemeManager = localStorageColorSchemeManager({ key: 'dunxon-ui' });
+const colorSchemeManager = localStorageColorSchemeManager({ key: 'beacon-ui' });
 
 export const AppProviders = ({
   children,

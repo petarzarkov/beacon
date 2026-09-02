@@ -1,10 +1,10 @@
-# dunxon
+# beacon
 
 Control plane for a fleet of hosts, each running an agent the panel installs,
 updates and collects from.
 
 ```
-dunxon/
+beacon/
 ├── apps/
 │   ├── panel/     # dunx service: API, control plane, release host
 │   ├── agent/     # a dunx app compiled to one executable per managed host
@@ -36,8 +36,8 @@ The agent binary is about 79 MB and lands in `apps/be/data/agent/` with a
 `manifest.json` carrying its version and sha256. Both are gitignored.
 
 ```bash
-./apps/be/data/agent/dunxon-agent version
-./apps/be/data/agent/dunxon-agent probe
+./apps/be/data/agent/beacon-agent version
+./apps/be/data/agent/beacon-agent probe
 ```
 
 ## Where this is

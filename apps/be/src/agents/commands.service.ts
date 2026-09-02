@@ -11,9 +11,9 @@ import type {
   DiagnoseProbe,
   DiscoverPayload,
   HostReport,
-} from '@dunxon/contract';
+} from '@beacon/contract';
 import { AgentsRepository, type AgentRow } from './agents.repository.js';
-import type { CommandView } from '@dunxon/contract';
+import type { CommandView } from '@beacon/contract';
 import type { deployRoute, discoverRoute } from './agents.schemas.js';
 import { toCommandView } from './agents.views.js';
 import { mintGrant } from './enrolment.js';

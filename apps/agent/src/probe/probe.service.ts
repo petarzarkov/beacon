@@ -7,7 +7,7 @@ import {
   totalmem,
   uptime,
 } from 'node:os';
-import type { HostReport } from '@dunxon/contract';
+import type { HostReport } from '@beacon/contract';
 import { AgentConfigService } from '../config/settings.js';
 
 export type { HostReport };

@@ -1,5 +1,5 @@
 {
-  "name": "@dunxon/contract",
+  "name": "@beacon/contract",
   "version": "0.0.0",
   "private": true,
   "description": "The wire contract between panel, agent and console. Import-free, shared by all three.",

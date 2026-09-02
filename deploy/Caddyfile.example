@@ -1,4 +1,4 @@
-# TLS + reverse proxy for a public dunxon panel. Caddy gets a certificate
+# TLS + reverse proxy for a public beacon panel. Caddy gets a certificate
 # automatically and forwards to the panel, which binds a local port a firewall
 # keeps off the internet.
 #

@@ -58,7 +58,7 @@ export const LoginPage = (): React.ReactElement => {
         <form onSubmit={submit}>
           <Stack>
             <div>
-              <Title order={3}>dunxon</Title>
+              <Title order={3}>beacon</Title>
               <Text c="dimmed" size="sm">
                 Sign in to the fleet console.
               </Text>

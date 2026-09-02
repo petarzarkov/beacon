@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'bun:test';
-import { AGENT_HEADER, type ReportResponse } from '@dunxon/contract';
+import { AGENT_HEADER, type ReportResponse } from '@beacon/contract';
 import { Agent, startPanel, type Panel } from './harness/index.js';
 
 /**

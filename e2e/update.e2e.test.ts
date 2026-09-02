@@ -9,7 +9,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { MANIFEST_FILE } from '@dunxon/contract';
+import { MANIFEST_FILE } from '@beacon/contract';
 import { Agent, startPanel, waitFor, type Panel } from './harness/index.js';
 
 /**
@@ -20,7 +20,7 @@ import { Agent, startPanel, waitFor, type Panel } from './harness/index.js';
  * agree, but not that an agent given one will verify it, swap its own binary out
  * atomically, and come back running the new one. That swap is the whole reason
  * the panel is a release host, and until now nothing exercised it - it renames a
- * file over `/usr/local/bin/dunxon-agent` and restarts through systemd, neither
+ * file over `/usr/local/bin/beacon-agent` and restarts through systemd, neither
  * of which a test can own.
  *
  * So the agent takes both from config: `AGENT_INSTALL_PATH` points the swap at a
@@ -50,8 +50,8 @@ describe('self-update', () => {
     installed: () => string;
     restarted: () => boolean;
   } => {
-    workspace = mkdtempSync(join(tmpdir(), 'dunxon-e2e-update-'));
-    const installPath = join(workspace, 'dunxon-agent');
+    workspace = mkdtempSync(join(tmpdir(), 'beacon-e2e-update-'));
+    const installPath = join(workspace, 'beacon-agent');
     const restartMarker = join(workspace, 'restarted');
     const restartScript = join(workspace, 'restart.sh');
 
@@ -80,7 +80,7 @@ describe('self-update', () => {
       .digest('hex');
 
   /**
-   * The root timer's job: `dunxon-agent update` verifies the published hash,
+   * The root timer's job: `beacon-agent update` verifies the published hash,
    * swaps the binary in place, and restarts. Driven here as the CLI does it,
    * because that is exactly what the update unit's `ExecStart` runs.
    */
@@ -166,7 +166,7 @@ describe('self-update', () => {
    * The operator-driven path, whole. An operator queues `update`; the running,
    * unprivileged service collects it and - because it cannot write its own binary
    * by design - asks the root updater to. In production that ask is
-   * `sudo systemctl start dunxon-agent-update.service`; here it is the same swap
+   * `sudo systemctl start beacon-agent-update.service`; here it is the same swap
    * that unit would run, so the flow from a console button to a swapped binary is
    * proven rather than assumed.
    */

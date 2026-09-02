@@ -19,14 +19,14 @@ internet — only the proxy reaches it.
 ## Once, on the host
 
 ```bash
-# 1. Check the repo out (the unit assumes /opt/dunxon; edit it if not).
-sudo git clone <repo> /opt/dunxon && cd /opt/dunxon
+# 1. Check the repo out (the unit assumes /opt/beacon; edit it if not).
+sudo git clone <repo> /opt/beacon && cd /opt/beacon
 sudo bun install
 
 # 2. Secrets + public config. Fill APP_URL, AUTH_SECRET, AGENT_ENROLMENT_TOKEN.
-sudo cp deploy/panel.env.example /etc/dunxon-panel.env
-sudo chmod 600 /etc/dunxon-panel.env && sudo "$EDITOR" /etc/dunxon-panel.env
-sudo mkdir -p /var/lib/dunxon      # DATABASE_FILE + AGENT_RELEASE_DIR live here
+sudo cp deploy/panel.env.example /etc/beacon-panel.env
+sudo chmod 600 /etc/beacon-panel.env && sudo "$EDITOR" /etc/beacon-panel.env
+sudo mkdir -p /var/lib/beacon      # DATABASE_FILE + AGENT_RELEASE_DIR live here
 
 # 3. The first operator (no public sign-up by design).
 bun run create:admin -- --email you@example.com --password '…'
@@ -44,7 +44,7 @@ and the agent, installs the unit, and starts it:
 ```bash
 bun run svc:install     # build + install + enable --now
 bun run svc:status
-bun run svc:logs        # journalctl -u dunxon-panel -f
+bun run svc:logs        # journalctl -u beacon-panel -f
 bun run svc:restart     # rebuild + restart
 bun run svc:stop / svc:start / svc:uninstall
 ```

@@ -27,7 +27,7 @@ export const createApp = async (): Promise<HttpApp> => {
       root: AppModule,
       inject: [Auth] as const,
       useFactory: (auth: Auth) => ({
-        title: 'dunxon-be',
+        title: 'beacon-be',
         version: '0.1.0',
         description:
           'The control plane. `/api/agent` is the protocol agents speak; ' +

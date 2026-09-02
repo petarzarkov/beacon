@@ -1,6 +1,6 @@
 # Roadmap
 
-Where dunxon is, and what is left. The design rationale lives in
+Where beacon is, and what is left. The design rationale lives in
 [architecture.md](architecture.md); this is the build order.
 
 The one constraint everything answers to, restated because every item below
@@ -12,7 +12,7 @@ intents an agent collects when it next reports.
 Everything below in **Shipped** is done, verified, and pushed to `main`. The
 first things to pick up:
 
-1. **Verify on a real host** — both `dunxon-agent install` (systemd, as root) and
+1. **Verify on a real host** — both `beacon-agent install` (systemd, as root) and
    the panel deploy (`deploy/`, `svc:install`, behind Caddy with a real domain).
    Both are written and typecheck; neither has run on a real machine. This is the
    one gap between "a working first version" and "running in production."
@@ -141,7 +141,7 @@ origin, so the session cookie is first-party with no CORS in production.
 
 ### Shared contract (`libs/contract`)
 
-`@dunxon/contract` — the import-free wire types and constants (headers, command
+`@beacon/contract` — the import-free wire types and constants (headers, command
 vocabulary, report and view shapes) that panel, agent and console all depend on.
 It replaced the old `@be/*` / `@agent/*` source aliases, so nothing reaches into
 another app's `src`; the panel's zod schemas validate into these same shapes.

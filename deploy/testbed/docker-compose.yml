@@ -3,21 +3,21 @@
 # Bring it up and watch a fleet assemble itself from one seeded host: the seed
 # sweeps the subnet, finds the neighbours on port 22, installs the agent over
 # SSH, and each neighbour enrols - appearing in the panel with the seed as its
-# installer. Open http://localhost:3000 (admin@dunxon.local / dunxon-testbed) and
+# installer. Open http://localhost:3000 (admin@beacon.local / beacon-testbed) and
 # the Lineage view fills in. Open http://localhost:3001 (the host port; the panel
 # listens on 3000 inside the network).
 #
 #   docker compose -f deploy/testbed/docker-compose.yml up --build
 #
 # This is the "real multi-host SSH coverage" a single dev host cannot fake: the
-# neighbours run systemd, so `dunxon-agent install` sets up units and a run user
+# neighbours run systemd, so `beacon-agent install` sets up units and a run user
 # for real. Everything here is a throwaway on a private network - the fixed
 # password and armed propagation are fine for a testbed and nowhere else.
 
-x-token: &token dunxon-testbed-enrolment-token
+x-token: &token beacon-testbed-enrolment-token
 
 networks:
-  dunxnet:
+  beaconnet:
     ipam:
       config:
         - subnet: 10.7.0.0/24
@@ -31,7 +31,7 @@ services:
     environment:
       AGENT_ENROLMENT_TOKEN: *token
       # A real secret because APP_URL is set; the panel refuses the dev default otherwise.
-      AUTH_SECRET: dunxon-testbed-secret-not-for-production-0123456789
+      AUTH_SECRET: beacon-testbed-secret-not-for-production-0123456789
       APP_URL: http://localhost:3001
       # Arm fleet-wide propagation so the seed actually spreads (paused by default).
       AGENT_PROPAGATION_ALLOWED: 'true'
@@ -40,7 +40,7 @@ services:
     ports:
       - '3001:3000'
     networks:
-      - dunxnet
+      - beaconnet
 
   seed:
     build:
@@ -60,13 +60,13 @@ services:
       # panel is armed above.
       AGENT_PROPAGATE: 'true'
       AGENT_PROPAGATE_USER: root
-      AGENT_PROPAGATE_PASSWORD: dunxon-testbed
+      AGENT_PROPAGATE_PASSWORD: beacon-testbed
       # The URL a neighbour dials the panel on - it cannot infer the panel's
       # address for a different host, so the seed tells it.
       AGENT_PROPAGATE_PANEL_URL: http://panel:3000
       AGENT_PROPAGATE_INTERVAL_MS: '15000'
     networks:
-      - dunxnet
+      - beaconnet
 
   neighbour-1: &neighbour
     build:
@@ -85,7 +85,7 @@ services:
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
     networks:
-      - dunxnet
+      - beaconnet
 
   neighbour-2:
     <<: *neighbour

@@ -14,20 +14,20 @@ import { PropagateService } from './provision/propagate.service.js';
 import { RunnerService } from './run/runner.service.js';
 import { UpdateService } from './update/update.service.js';
 
-const USAGE = `dunxon-agent ${AGENT_VERSION}
+const USAGE = `beacon-agent ${AGENT_VERSION}
 
-Reports this host to a dunxon panel and keeps itself current.
+Reports this host to a beacon panel and keeps itself current.
 
 Usage:
-  dunxon-agent run                      Connect and report on the panel's cadence
-  dunxon-agent probe                    Print one report locally and exit
-  dunxon-agent version                  Print the agent version
-  dunxon-agent whoami                   Print this agent's enrolled identity
-  dunxon-agent install [options]        Install and start the service (root)
-  dunxon-agent uninstall                Stop and remove the service (root)
-  dunxon-agent update                   Pull a newer release if one is published (root)
-  dunxon-agent discover [--cidr X]      Sweep a subnet and print what answers
-  dunxon-agent propagate [--dry-run]    Install the agent onto reachable neighbours
+  beacon-agent run                      Connect and report on the panel's cadence
+  beacon-agent probe                    Print one report locally and exit
+  beacon-agent version                  Print the agent version
+  beacon-agent whoami                   Print this agent's enrolled identity
+  beacon-agent install [options]        Install and start the service (root)
+  beacon-agent uninstall                Stop and remove the service (root)
+  beacon-agent update                   Pull a newer release if one is published (root)
+  beacon-agent discover [--cidr X]      Sweep a subnet and print what answers
+  beacon-agent propagate [--dry-run]    Install the agent onto reachable neighbours
 
 Options:
   --panel-url <url>   Panel base URL, e.g. http://panel.internal:3000

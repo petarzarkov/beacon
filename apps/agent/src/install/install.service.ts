@@ -157,7 +157,7 @@ export class InstallService {
   #unit(runUser: string): string {
     return `${MANAGED}
 [Unit]
-Description=dunxon agent (reports this host to the panel)
+Description=beacon agent (reports this host to the panel)
 After=network-online.target
 Wants=network-online.target
 
@@ -181,7 +181,7 @@ WantedBy=multi-user.target
   #updateService(): string {
     return `${MANAGED}
 [Unit]
-Description=dunxon agent self-update
+Description=beacon agent self-update
 After=network-online.target
 Wants=network-online.target
 
@@ -195,7 +195,7 @@ ExecStart=${INSTALL_PATH} update
   #updateTimer(): string {
     return `${MANAGED}
 [Unit]
-Description=Check for a newer dunxon agent release
+Description=Check for a newer beacon agent release
 
 [Timer]
 OnBootSec=5min

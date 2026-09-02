@@ -1,4 +1,4 @@
-# dunxon
+# beacon
 
 A panel that manages a fleet of agents. Three apps, one repo:
 
@@ -88,13 +88,13 @@ a service here is constructed and injected the way one there is, and both are
 classes rather than closures.
 
 ```
-dunxon-agent version     print the version                (any user)
-dunxon-agent probe       print one report and exit        (any user)
-dunxon-agent run         connect and report on the panel's cadence
-dunxon-agent install     install and start the service    (root)
-dunxon-agent uninstall   stop and remove the service      (root)
-dunxon-agent update      pull a newer release             (root)
-dunxon-agent discover    list hosts on this subnet
+beacon-agent version     print the version                (any user)
+beacon-agent probe       print one report and exit        (any user)
+beacon-agent run         connect and report on the panel's cadence
+beacon-agent install     install and start the service    (root)
+beacon-agent uninstall   stop and remove the service      (root)
+beacon-agent update      pull a newer release             (root)
+beacon-agent discover    list hosts on this subnet
 ```
 
 `version` and `probe` answer before the container is built, deliberately. Both
@@ -103,7 +103,7 @@ version before deciding whether to replace it, so anything that can fail there
 reads as "not installed" and causes a reinstall loop.
 
 Settings resolve from flags, then the environment, then
-`/etc/dunxon-agent/agent.conf`, so a one-off `--panel-url` wins while debugging a
+`/etc/beacon-agent/agent.conf`, so a one-off `--panel-url` wins while debugging a
 host and a systemd drop-in can override without rewriting a `0600` file.
 
 ### Building it takes two passes, and the reason is not obvious

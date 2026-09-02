@@ -10,7 +10,7 @@ import {
   type HostReport,
   type ReleaseManifest,
   type ReportResponse,
-} from '@dunxon/contract';
+} from '@beacon/contract';
 import { AgentConfigService } from '../config/settings.js';
 import { IdentityStore, type Identity } from '../config/identity.js';
 
@@ -19,7 +19,7 @@ export type { ReleaseManifest };
 /**
  * Everything that talks to the panel, so nothing else needs a token.
  *
- * The types come from `@dunxon/contract`, the shared wire package, rather than
+ * The types come from `@beacon/contract`, the shared wire package, rather than
  * being restated here. It imports nothing, which is what lets a compiled binary
  * share it without dragging a DI container into the bundle - and it means a field
  * added to the contract is a type error here rather than a silently dropped value

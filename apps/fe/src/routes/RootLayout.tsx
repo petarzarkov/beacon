@@ -139,7 +139,7 @@ export const RootLayout = (): React.ReactElement => {
               onClick={() => navigate('/agents')}
             >
               <Text fw={700} size="lg">
-                dunxon
+                beacon
               </Text>
               <ReleaseBadge />
             </Group>

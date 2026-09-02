@@ -13,7 +13,7 @@ import type {
   DiagnosePayload,
   DiscoverPayload,
   HostReport,
-} from '@dunxon/contract';
+} from '@beacon/contract';
 
 /**
  * An agent, keyed by an id the panel assigns at enrolment rather than by

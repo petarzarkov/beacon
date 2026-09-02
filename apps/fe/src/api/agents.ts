@@ -13,7 +13,7 @@ import type {
   DiscoveryView,
   FleetSettings,
   ReleaseManifest,
-} from '@dunxon/contract';
+} from '@beacon/contract';
 import { http } from './http';
 import { keys } from './queryKeys';
 
@@ -46,7 +46,7 @@ export interface DeployInput {
 }
 
 /**
- * Types come from `@dunxon/contract`, the shared wire package - not restated
+ * Types come from `@beacon/contract`, the shared wire package - not restated
  * here and not reached out of the server's `src`. The console and the panel
  * agree on what an agent looks like because they read the same file.
  */

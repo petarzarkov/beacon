@@ -6,7 +6,7 @@ import type {
   DiagnoseProbe,
   DiscoveryView,
   ReleaseManifest,
-} from '@dunxon/contract';
+} from '@beacon/contract';
 
 export type {
   AgentEventView,

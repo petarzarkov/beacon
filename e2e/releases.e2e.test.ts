@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { AGENT_HEADER } from '@dunxon/contract';
+import { AGENT_HEADER } from '@beacon/contract';
 import { Agent, startPanel, waitFor, type Panel } from './harness/index.js';
 
 /**

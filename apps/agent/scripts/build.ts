@@ -28,7 +28,7 @@ import { join, resolve } from 'node:path';
 import pkg from '../package.json';
 
 const AGENT_DIR = resolve(import.meta.dir, '..');
-const BINARY_NAME = 'dunxon-agent';
+const BINARY_NAME = 'beacon-agent';
 
 /** Mirrors AGENT_RELEASE_DIR on the panel. */
 const releaseDir =
@@ -42,7 +42,7 @@ const outfile = join(releaseDir, BINARY_NAME);
 console.log(`Building agent ${version} -> ${outfile}`);
 const started = performance.now();
 
-const staging = mkdtempSync(join(tmpdir(), 'dunxon-agent-'));
+const staging = mkdtempSync(join(tmpdir(), 'beacon-agent-'));
 try {
   const bundled = await Bun.build({
     entrypoints: [join(AGENT_DIR, 'src/main.ts')],

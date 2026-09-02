@@ -9,14 +9,14 @@ import type {
   EnrolResponse,
   HostReport,
   ReportResponse,
-} from '@dunxon/contract';
+} from '@beacon/contract';
 import { AgentsRepository, type AgentRow } from './agents.repository.js';
 import type {
   AgentEventView,
   AgentMetricPoint,
   AgentView,
   DiscoveryView,
-} from '@dunxon/contract';
+} from '@beacon/contract';
 import {
   toAgentEventView,
   toAgentView,

@@ -3,7 +3,7 @@ import { HttpError, HttpStatusCode } from '@dunx/http';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { AppConfigService } from '../config.js';
-import { MANIFEST_FILE, type ReleaseManifest } from '@dunxon/contract';
+import { MANIFEST_FILE, type ReleaseManifest } from '@beacon/contract';
 
 /**
  * The panel is the fleet's single distribution point: one binary is placed by

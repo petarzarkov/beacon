@@ -11,7 +11,7 @@ import type {
   AgentView,
   CommandView,
   DiscoveryView,
-} from '@dunxon/contract';
+} from '@beacon/contract';
 
 /**
  * Rows to what the console is shown. Separate from the repository because the

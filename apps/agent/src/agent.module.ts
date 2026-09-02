@@ -38,7 +38,7 @@ import { UpdateService } from './update/update.service.js';
      */
     LoggerModule.forRootAsync({
       useFactory: (config: AgentConfigService) => ({
-        name: 'dunxon-agent',
+        name: 'beacon-agent',
         level: config.get('logLevel'),
         transports: [
           new StreamTransport(process.stderr, {

@@ -1,4 +1,4 @@
-# dunxon-be
+# beacon-be
 
 The panel: control plane, API, and release host for the agent fleet. Serves the
 operator console (`apps/fe`) at the same origin.

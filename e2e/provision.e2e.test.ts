@@ -205,7 +205,7 @@ describe('propagation lineage', () => {
 
       // Enrol agent B directly via that grant, simulating what the deploy
       // command would trigger on a real install.
-      const { ENROLMENT_HEADER } = await import('@dunxon/contract');
+      const { ENROLMENT_HEADER } = await import('@beacon/contract');
       const enrolRes = await fetch(`${p.url}/api/agent/enrol`, {
         method: 'POST',
         headers: {

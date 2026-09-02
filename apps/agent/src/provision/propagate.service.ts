@@ -1,6 +1,6 @@
 import { Logger } from '@dunx/core';
 import { existsSync, readFileSync } from 'node:fs';
-import type { DeployCredential, DiscoveredHost } from '@dunxon/contract';
+import type { DeployCredential, DiscoveredHost } from '@beacon/contract';
 import { AgentConfigService } from '../config/settings.js';
 import { PanelClient } from '../panel/panel-client.js';
 import { DiscoverService } from './discover.service.js';
@@ -26,7 +26,7 @@ export interface PropagationResult {
  * `deploy` remains the credential-free default. See `config/settings.ts`.
  *
  * The decision of *what* to skip is made on the target itself: `isInstalled`
- * asks `dunxon-agent version` over SSH, so a host already in the fleet is left
+ * asks `beacon-agent version` over SSH, so a host already in the fleet is left
  * alone without the panel having to be consulted. That keeps a propagating agent
  * able to work even against a subnet the panel has never heard of.
  */

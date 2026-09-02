@@ -45,7 +45,7 @@ export class IdentityStore {
   /**
    * In order of preference, and the fallback is not a convenience.
    *
-   * `install` runs as root and hands `/var/lib/dunxon-agent` to the service
+   * `install` runs as root and hands `/var/lib/beacon-agent` to the service
    * user, so the first path is the one a real deployment uses. The second is
    * what makes `bun run dev:agent` work as an ordinary user - without it the
    * only way to run an agent outside a systemd unit would be as root.
