@@ -10,6 +10,7 @@ import { AlertsService } from './alerts.service.js';
 import { CommandsService } from './commands.service.js';
 import { FleetController } from './fleet.controller.js';
 import { ReleasesService } from './releases.service.js';
+import { ScheduleService } from './schedule.service.js';
 
 /**
  * The feature this repo exists for. Two controllers, because an agent and an
@@ -46,6 +47,7 @@ import { ReleasesService } from './releases.service.js';
     AlertsService,
     CommandsService,
     ReleasesService,
+    ScheduleService,
   ],
   // `ReleasesService` so the health probe can report whether a release exists;
   // `AgentsService` so it can count the fleet. The repository stays private -

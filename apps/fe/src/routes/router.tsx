@@ -7,6 +7,7 @@ import { DiscoveredPage } from './DiscoveredPage';
 import { LineagePage } from './LineagePage';
 import { NotFoundPage } from './NotFoundPage';
 import { RootLayout } from './RootLayout';
+import { SchedulesPage } from './SchedulesPage';
 import { LoginPage } from './auth/LoginPage';
 import { RequireAuth } from './guards/RequireAuth';
 
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
           { path: 'agents/:agentId', Component: AgentDetailPage },
           { path: 'commands', Component: CommandsPage },
           { path: 'alerts', Component: AlertsPage },
+          { path: 'schedules', Component: SchedulesPage },
           { path: 'discovered', Component: DiscoveredPage },
           { path: 'lineage', Component: LineagePage },
           { path: '*', Component: NotFoundPage },

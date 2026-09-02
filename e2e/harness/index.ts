@@ -8,5 +8,7 @@ export type {
   CommandView,
   DiscoveryView,
   InventoryView,
+  NewScheduledTask,
+  ScheduledTaskView,
 } from './operator.js';
 export { startPanel, type Panel, type PanelOptions } from './panel.js';

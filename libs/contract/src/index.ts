@@ -1,3 +1,7 @@
+/* eslint-disable max-lines -- this is by design the one file that defines the
+   whole wire contract shared by panel, agent and console (see the module comment
+   below); it grows with the feature and splitting it would scatter the single
+   source of truth it exists to be. */
 /**
  * `@beacon/contract` - the wire contract between panel, agent and console, and
  * the one definition of it.
@@ -519,4 +523,60 @@ export interface AlertView {
   readonly resolvedAt: string | null;
   readonly acknowledgedAt: string | null;
   readonly acknowledgedBy: string | null;
+}
+
+// --- Scheduled tasks ---------------------------------------------------------
+// Proactive management: the panel queues a command on a cadence rather than an
+// operator doing it by hand. It reuses the command lifecycle whole - a scheduled
+// task is just something that presses "run" on a timer - so a failed one raises a
+// `command_failed` alert like any other, and its output lands in the same history.
+//
+// The cadence and the firing are the framework's: each task is a `Bun.cron` job in
+// dunx's `ScheduleRegistry`, added and removed at runtime. The panel persists only
+// the definition (so it survives a restart); the live run state - next fire, run
+// count, last error - is the registry's.
+
+/**
+ * What a scheduled task runs. Each maps to a command the panel already knows how
+ * to queue - a schedule adds *when*, not a new *what*:
+ * - `report` / `inventory` - refresh a host's state.
+ * - `diagnose` - run a read-only probe (needs `probe`).
+ * - `exec` - run a curated library command (needs `libraryId`).
+ */
+export const SCHEDULE_ACTIONS = [
+  'report',
+  'inventory',
+  'diagnose',
+  'exec',
+] as const;
+export type ScheduleAction = (typeof SCHEDULE_ACTIONS)[number];
+
+/** One recurring task, as the console sees it. */
+export interface ScheduledTaskView {
+  readonly id: string;
+  readonly name: string;
+  /** The agent it targets, or null to run against the whole fleet. */
+  readonly agentId: string | null;
+  /** Resolved for the console; null for a fleet-wide task or a removed agent. */
+  readonly agentHostname: string | null;
+  readonly action: ScheduleAction;
+  /** Set for `diagnose`. */
+  readonly probe: DiagnoseProbe | null;
+  /** Set for `exec`: the library entry to run. */
+  readonly libraryId: string | null;
+  /** Resolved for the console. */
+  readonly libraryName: string | null;
+  /** A `Bun.cron` expression (5-field, minute resolution) or a named `@daily` etc. */
+  readonly cron: string;
+  readonly enabled: boolean;
+  /** Live from the registry; null before the first fire or while disabled. */
+  readonly lastRunAt: string | null;
+  /** Live from the registry: the next fire the cron computes. */
+  readonly nextRunAt: string | null;
+  /** How many times it has fired since the panel started. */
+  readonly runs: number;
+  /** The last run's error, if it ended in one. */
+  readonly lastError: string | null;
+  readonly createdAt: string;
+  readonly createdBy: string | null;
 }

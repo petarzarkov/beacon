@@ -15,6 +15,7 @@ import {
   commandLibrary,
   discoveredHosts,
   fleetSettings,
+  scheduledTasks,
   usedGrants,
   type AgentCommandRow,
   type AgentEventRow,
@@ -25,6 +26,7 @@ import {
   type AlertRuleRow,
   type CommandLibraryRow,
   type DiscoveredHostRow,
+  type ScheduledTaskRow,
 } from './agents.schema.js';
 
 export type {
@@ -37,6 +39,7 @@ export type {
   AlertRuleRow,
   CommandLibraryRow,
   DiscoveredHostRow,
+  ScheduledTaskRow,
 };
 
 /** The alert states that count as still open. */
@@ -157,6 +160,18 @@ export class AgentsRepository {
       agent_id TEXT PRIMARY KEY REFERENCES agents(id) ON DELETE CASCADE,
       data TEXT NOT NULL,
       received_at TEXT NOT NULL
+    )`);
+    this.db.run(sql`CREATE TABLE IF NOT EXISTS scheduled_tasks (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      agent_id TEXT REFERENCES agents(id) ON DELETE CASCADE,
+      action TEXT NOT NULL,
+      probe TEXT,
+      library_id TEXT REFERENCES command_library(id) ON DELETE CASCADE,
+      cron TEXT NOT NULL,
+      enabled INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      created_by TEXT
     )`);
     this.db.run(sql`CREATE TABLE IF NOT EXISTS discovered_hosts (
       id TEXT PRIMARY KEY,
@@ -511,6 +526,60 @@ export class AgentsRepository {
         .where(eq(agentInventory.agentId, agentId))
         .get() ?? null
     );
+  }
+
+  // --- Scheduled tasks -------------------------------------------------------
+
+  listSchedules(): readonly ScheduledTaskRow[] {
+    return this.db
+      .select()
+      .from(scheduledTasks)
+      .orderBy(scheduledTasks.createdAt)
+      .all();
+  }
+
+  findSchedule(id: string): ScheduledTaskRow | null {
+    return (
+      this.db
+        .select()
+        .from(scheduledTasks)
+        .where(eq(scheduledTasks.id, id))
+        .get() ?? null
+    );
+  }
+
+  createSchedule(row: ScheduledTaskRow): void {
+    this.db.insert(scheduledTasks).values(row).run();
+  }
+
+  deleteSchedule(id: string): boolean {
+    return (
+      this.db
+        .delete(scheduledTasks)
+        .where(eq(scheduledTasks.id, id))
+        .returning()
+        .all().length > 0
+    );
+  }
+
+  setScheduleEnabled(id: string, enabled: boolean): boolean {
+    return (
+      this.db
+        .update(scheduledTasks)
+        .set({ enabled })
+        .where(eq(scheduledTasks.id, id))
+        .returning()
+        .all().length > 0
+    );
+  }
+
+  /** Enabled tasks, for arming the registry at boot. */
+  enabledSchedules(): readonly ScheduledTaskRow[] {
+    return this.db
+      .select()
+      .from(scheduledTasks)
+      .where(eq(scheduledTasks.enabled, true))
+      .all();
   }
 
   queue(row: AgentCommandRow): void {

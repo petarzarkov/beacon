@@ -13,4 +13,5 @@ export const keys = {
   library: ['library'] as const,
   alerts: ['alerts'] as const,
   alertRules: ['alert-rules'] as const,
+  schedules: ['schedules'] as const,
 };

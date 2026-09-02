@@ -13,6 +13,7 @@ import type {
 } from '@beacon/contract';
 import { AgentsRepository, type AgentRow } from './agents.repository.js';
 import { AlertsService } from './alerts.service.js';
+import { ScheduleService } from './schedule.service.js';
 import type {
   AgentEventView,
   AgentMetricPoint,
@@ -55,12 +56,18 @@ export class AgentsService implements OnInit {
     private readonly commands: CommandsService,
     private readonly releases: ReleasesService,
     private readonly alerts: AlertsService,
+    private readonly schedule: ScheduleService,
     private readonly config: AppConfigService,
     private readonly logger: Logger,
   ) {}
 
   onInit(): void {
     this.repo.migrate();
+    // After the migration, so the table exists: arm the persisted scheduled
+    // tasks in the framework's registry. This is the one ordering the schedule
+    // service depends on, which is why it is driven from here rather than its own
+    // lifecycle hook.
+    this.schedule.armPersisted();
     this.logger.info('agents feature ready', { agents: this.repo.count() });
   }
 
@@ -76,6 +83,8 @@ export class AgentsService implements OnInit {
     ).toISOString();
     const pruned = this.repo.pruneMetrics(before);
     if (pruned > 0) this.logger.info('pruned old metrics', { pruned });
+    // Scheduled tasks fire on their own cron in the framework's registry, not
+    // here - the sweep only expires commands, prunes metrics and judges silence.
     // Silence is the one alert condition that is the absence of a report, so it
     // is judged here on the sweep rather than on ingest.
     this.alerts.evaluateSilence();

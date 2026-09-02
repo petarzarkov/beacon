@@ -97,6 +97,14 @@ container is built, for any user; everything else boots the container.
   (once at startup, and on an `inventory` command that refreshes it), so a report
   stays small and machine-neutral; the panel keeps the latest snapshot per host.
   The core facts come from `node:os` natively, disks from `df` best-effort.
+- **Scheduled tasks** — a recurring command on a cadence, one `Bun.cron` job per
+  task in dunx's `ScheduleRegistry` (the framework's scheduler, not a hand-rolled
+  one): the panel persists only the definition and arms/removes the registry as
+  tasks are created, paused and deleted. A task adds _when_, not a new _what_ — it
+  queues `report`, `inventory`, a `diagnose` probe or a library `exec`, for one
+  agent or the whole fleet, and the run rides the normal command lifecycle, so a
+  failure raises a `command_failed` alert. Admin-curated; the registry gives next
+  fire, run count and last error live.
 - **`install` / `uninstall`** — writes `/usr/local/bin`, the `0600` config, a
   `/var/lib` state dir, an unprivileged service unit and a root update timer, and
   a single-line sudoers rule that lets the service ask the root timer to update.
@@ -141,6 +149,9 @@ path, every screen is a real URL that deep-links and survives a reload.
 - **Alerts** (`/alerts`) — firing/acknowledged alerts with acknowledge, an
   all-history toggle, and (admin) rule curation + the notification webhook. The
   nav badges the firing count.
+- **Schedules** (`/schedules`) — the recurring tasks, each with its cadence, next
+  fire and run count (live from the registry); (admin) add a task, run it now,
+  pause/resume it, and delete it.
 - **Discovered** (`/discovered`) — swept hosts not yet managed, with a deployment
   form that takes the credential per install and defaults the callback to this
   origin. The nav badges the count of unmanaged hosts.
@@ -163,7 +174,7 @@ An in-process panel on an ephemeral port plus **real agent subprocesses** — th
 only way to test the things that matter: that `restart` really ends the process,
 that a fresh process reports a fresh uptime, that an identity on disk is found
 again by a different process, and that **self-update actually swaps the binary**
-and comes back on the new one. 64 tests across enrolment, the command lifecycle,
+and comes back on the new one. 69 tests across enrolment, the command lifecycle,
 releases, self-update (the real swap, the hash-mismatch refusal, the
 operator-driven queue), **lifecycle events** (a clean stop reports an exit, a kill
 reports none), **metrics history** (a point per report, oldest-first, real
@@ -174,6 +185,9 @@ commands** (a Tier-1 library entry runs and a non-admin cannot curate it; Tier-2
 free-form is refused unless enabled, then runs), **alerting** (a threshold fires
 and is acknowledged; silence fires on the sweep and resolves when the agent
 returns; a non-admin cannot curate rules; a firing alert reaches a webhook),
+**scheduled tasks** (running one queues the right command for the target,
+attributed to the schedule; pausing disarms it; a bad cron is refused; a
+non-admin cannot curate; a fleet-wide task fans out to every agent),
 **propagation lineage** (a token-enrolled host is
 attributed to whoever swept its address, and spreaders report themselves),
 provisioning, the propagation kill switch, a multi-agent fleet with an offline

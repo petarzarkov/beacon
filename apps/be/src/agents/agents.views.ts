@@ -6,6 +6,7 @@ import type {
   AgentRow,
   CommandLibraryRow,
   DiscoveredHostRow,
+  ScheduledTaskRow,
 } from './agents.repository.js';
 import type {
   AgentEventView,
@@ -15,6 +16,7 @@ import type {
   CommandView,
   DiscoveryView,
   InventoryView,
+  ScheduledTaskView,
 } from '@beacon/contract';
 
 /**
@@ -115,6 +117,42 @@ export const toInventoryView = (row: AgentInventoryRow): InventoryView => ({
   ...row.data,
   agentId: row.agentId,
   receivedAt: row.receivedAt,
+});
+
+/** The live run state of a scheduled task, read from the framework's registry. */
+export interface ScheduleLiveState {
+  readonly lastRunAt: string | null;
+  readonly nextRunAt: string | null;
+  readonly runs: number;
+  readonly lastError: string | null;
+}
+
+/**
+ * The stored definition, the names resolved for the console, and the live run
+ * state from the `ScheduleRegistry` (which owns the cadence and the counters).
+ */
+export const toScheduledTaskView = (
+  row: ScheduledTaskRow,
+  agentHostname: string | null,
+  libraryName: string | null,
+  live: ScheduleLiveState,
+): ScheduledTaskView => ({
+  id: row.id,
+  name: row.name,
+  agentId: row.agentId,
+  agentHostname,
+  action: row.action,
+  probe: row.probe,
+  libraryId: row.libraryId,
+  libraryName,
+  cron: row.cron,
+  enabled: row.enabled,
+  lastRunAt: live.lastRunAt,
+  nextRunAt: live.nextRunAt,
+  runs: live.runs,
+  lastError: live.lastError,
+  createdAt: row.createdAt,
+  createdBy: row.createdBy,
 });
 
 export const toDiscoveryView = (row: DiscoveredHostRow): DiscoveryView => ({

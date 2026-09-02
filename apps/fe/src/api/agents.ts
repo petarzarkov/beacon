@@ -17,6 +17,8 @@ import type {
   FleetSettings,
   InventoryView,
   ReleaseManifest,
+  ScheduleAction,
+  ScheduledTaskView,
 } from '@beacon/contract';
 import { http } from './http';
 import { keys } from './queryKeys';
@@ -33,6 +35,7 @@ export type {
   FleetSettings,
   InventoryView,
   ReleaseManifest,
+  ScheduledTaskView,
 };
 
 /**
@@ -329,5 +332,64 @@ export const useSetAlertWebhook = () => {
     mutationFn: (url: string) =>
       http.put<FleetSettings>('/api/agents/alert-webhook', { url }),
     onSuccess: () => client.invalidateQueries({ queryKey: keys.settings }),
+  });
+};
+
+// --- Scheduled tasks ---------------------------------------------------------
+
+/** What a new scheduled task looks like from the console. */
+export interface NewScheduledTask {
+  readonly name: string;
+  readonly agentId?: string | null;
+  readonly action: ScheduleAction;
+  readonly probe?: DiagnoseProbe;
+  readonly libraryId?: string;
+  readonly cron: string;
+}
+
+/** The recurring tasks, with the registry's live run state. Live-refreshed. */
+export const useSchedules = (): UseQueryResult<readonly ScheduledTaskView[]> =>
+  useQuery({
+    queryKey: keys.schedules,
+    queryFn: () =>
+      http.get<readonly ScheduledTaskView[]>('/api/agents/schedules'),
+    refetchInterval: LIVE_MS,
+  });
+
+export const useAddSchedule = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (task: NewScheduledTask) =>
+      http.post<ScheduledTaskView>('/api/agents/schedules', task),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.schedules }),
+  });
+};
+
+export const useToggleSchedule = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      http.put(`/api/agents/schedules/${id}`, { enabled }),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.schedules }),
+  });
+};
+
+/** Run a task now, off its cadence. Its command then rides the normal lifecycle. */
+export const useRunSchedule = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => http.post(`/api/agents/schedules/${id}/run`),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.schedules });
+      void client.invalidateQueries({ queryKey: keys.commands });
+    },
+  });
+};
+
+export const useDeleteSchedule = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => http.del(`/api/agents/schedules/${id}`),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.schedules }),
   });
 };

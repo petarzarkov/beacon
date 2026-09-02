@@ -6,6 +6,7 @@ import {
   ALERT_METRICS,
   ALERT_RULE_KINDS,
   DIAGNOSE_PROBES,
+  SCHEDULE_ACTIONS,
 } from '@beacon/contract';
 
 /**
@@ -348,6 +349,39 @@ export const alertIdRoute = {
 } as const;
 export const alertWebhookRoute = {
   body: z.object({ url: z.string().max(2048) }),
+} as const;
+
+// --- Scheduled tasks ----------------------------------------------------------
+
+export const scheduleTask = z
+  .object({
+    name: z.string().min(1).max(80),
+    // Null (or absent) targets the whole fleet; otherwise one agent.
+    agentId: z.string().min(1).max(64).nullable().optional(),
+    action: z.enum(SCHEDULE_ACTIONS),
+    probe: z.enum(DIAGNOSE_PROBES).optional(),
+    libraryId: z.string().min(1).max(64).optional(),
+    // A Bun.cron expression or named schedule; the registry parses it for real
+    // and an unparseable one comes back a 400 from the service.
+    cron: z.string().min(1).max(120),
+  })
+  .refine((r) => r.action !== 'diagnose' || r.probe !== undefined, {
+    message: 'a diagnose task needs a probe',
+  })
+  .refine((r) => r.action !== 'exec' || r.libraryId !== undefined, {
+    message: 'an exec task needs a library command',
+  })
+  .meta({
+    id: 'ScheduledTask',
+    description: 'A command the panel queues on a cadence',
+  });
+export const createScheduleRoute = { body: scheduleTask } as const;
+export const scheduleIdRoute = {
+  params: z.object({ id: z.string().min(1).max(64) }),
+} as const;
+export const toggleScheduleRoute = {
+  params: z.object({ id: z.string().min(1).max(64) }),
+  body: z.object({ enabled: z.boolean() }),
 } as const;
 
 export const fleetSettings = z

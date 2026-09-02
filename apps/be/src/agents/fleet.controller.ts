@@ -23,6 +23,7 @@ import type {
   FleetSettings,
   InventoryView,
   ReleaseManifest,
+  ScheduledTaskView,
 } from '@beacon/contract';
 import {
   agentEventsRoute,
@@ -33,6 +34,7 @@ import {
   alertWebhookRoute,
   createAlertRuleRoute,
   createLibraryRoute,
+  createScheduleRoute,
   deployRoute,
   diagnoseRoute,
   discoverRoute,
@@ -42,12 +44,15 @@ import {
   listCommandsRoute,
   oneAgentRoute,
   queueRoute,
+  scheduleIdRoute,
   settingsRoute,
+  toggleScheduleRoute,
 } from './agents.schemas.js';
 import { AgentsService } from './agents.service.js';
 import { AlertsService } from './alerts.service.js';
 import { CommandsService } from './commands.service.js';
 import { ReleasesService } from './releases.service.js';
+import { ScheduleService } from './schedule.service.js';
 
 /**
  * The operator console's API. Plural `/api/agents`, against the agent's own
@@ -77,6 +82,7 @@ export class FleetController {
     private readonly commands: CommandsService,
     private readonly releases: ReleasesService,
     private readonly alerts: AlertsService,
+    private readonly schedule: ScheduleService,
     private readonly auth: AuthContext,
   ) {}
 
@@ -201,6 +207,50 @@ export class FleetController {
     const url = input.body.url.trim();
     this.alerts.setWebhookUrl(url === '' ? null : url, this.#issuer());
     return this.settings();
+  }
+
+  // --- Scheduled tasks -------------------------------------------------------
+  // Static segments, declared before `/:id`. Any operator reads; admin curates.
+
+  @ApiDoc({ summary: 'The recurring scheduled tasks' })
+  @Get('/schedules')
+  schedules(): readonly ScheduledTaskView[] {
+    return this.schedule.listTasks();
+  }
+
+  @Roles('admin')
+  @ApiDoc({ summary: 'Create a scheduled task (admin)' })
+  @Post('/schedules', createScheduleRoute)
+  addSchedule(input: Input<typeof createScheduleRoute>): ScheduledTaskView {
+    return this.schedule.createTask(input.body, this.#issuer());
+  }
+
+  @Roles('admin')
+  @ApiDoc({ summary: 'Enable or pause a scheduled task (admin)' })
+  @Put('/schedules/:id', toggleScheduleRoute)
+  toggleSchedule(input: Input<typeof toggleScheduleRoute>): {
+    enabled: boolean;
+  } {
+    this.schedule.setEnabled(input.params.id, input.body.enabled);
+    return { enabled: input.body.enabled };
+  }
+
+  @Roles('admin')
+  @ApiDoc({ summary: 'Run a scheduled task now, off its cadence (admin)' })
+  @Post('/schedules/:id/run', scheduleIdRoute)
+  async runSchedule(
+    input: Input<typeof scheduleIdRoute>,
+  ): Promise<{ ran: true }> {
+    await this.schedule.runNow(input.params.id);
+    return { ran: true };
+  }
+
+  @Roles('admin')
+  @ApiDoc({ summary: 'Delete a scheduled task (admin)' })
+  @Delete('/schedules/:id', scheduleIdRoute)
+  removeSchedule(input: Input<typeof scheduleIdRoute>): { deleted: true } {
+    this.schedule.deleteTask(input.params.id);
+    return { deleted: true };
   }
 
   /**

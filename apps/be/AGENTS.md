@@ -41,9 +41,12 @@ should not have a dependency that can take it down.
     console's API: list, one agent + its events + metric history + inventory,
     commands, discovered, deployments, read-only diagnostics, the command library
     (`@Roles('admin')` to curate) and `exec` (Tier 1 library, Tier 2 free-form),
-    plus alerting (rules + alerts + the notification webhook).
+    alerting (rules + alerts + the notification webhook), and scheduled tasks.
   - `alerts.service.ts` — alert rules, evaluation (thresholds on report, silence
     on the sweep, failed commands), the alert lifecycle, and the webhook.
+  - `schedule.service.ts` — recurring tasks: persists the definition and
+    arms/removes them in dunx's `ScheduleRegistry` (a `Bun.cron` job each), whose
+    handler queues the task's command. The registry owns the cadence and firing.
   - `agents.service.ts` — enrolment, report ingest, the fleet views.
   - `commands.service.ts` — the command lifecycle and the TTL sweep.
   - `releases.service.ts` — serves the published binary + manifest.

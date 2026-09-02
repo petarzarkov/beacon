@@ -13,6 +13,7 @@ import {
 import {
   IconBell,
   IconBinaryTree,
+  IconClockPlay,
   IconDeviceDesktop,
   IconLogout,
   IconMenu2,
@@ -94,6 +95,12 @@ export const RootLayout = (): React.ReactElement => {
       icon: <IconBell size={16} />,
       active: pathname.startsWith('/alerts'),
       count: firing,
+    },
+    {
+      to: '/schedules',
+      label: 'Schedules',
+      icon: <IconClockPlay size={16} />,
+      active: pathname.startsWith('/schedules'),
     },
     {
       to: '/discovered',

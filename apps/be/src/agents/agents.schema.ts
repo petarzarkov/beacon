@@ -16,9 +16,11 @@ import type {
   CommandState,
   DeployPayload,
   DiagnosePayload,
+  DiagnoseProbe,
   DiscoverPayload,
   ExecPayload,
   HostReport,
+  ScheduleAction,
 } from '@beacon/contract';
 
 /**
@@ -172,6 +174,36 @@ export const alerts = sqliteTable(
 );
 
 /**
+ * A recurring task the panel runs on a cadence. Only the *definition* lives here;
+ * the cadence and firing are dunx's `ScheduleRegistry` (a `Bun.cron` job per
+ * enabled task, armed at boot and on create), and the live run state is the
+ * registry's. The panel persists this so the schedule survives a restart, and it
+ * queues a command rather than doing anything itself, so the whole command
+ * lifecycle applies. `agent_id` null means the whole fleet; a per-agent task
+ * cascades away with its agent, and an `exec` task with the library entry it runs.
+ */
+export const scheduledTasks = sqliteTable('scheduled_tasks', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  /** Null for a fleet-wide task; otherwise the one agent it targets. */
+  agentId: text('agent_id').references(() => agents.id, {
+    onDelete: 'cascade',
+  }),
+  action: text('action').$type<ScheduleAction>().notNull(),
+  /** Set for a `diagnose` task. */
+  probe: text('probe').$type<DiagnoseProbe>(),
+  /** Set for an `exec` task: the library entry to run. */
+  libraryId: text('library_id').references(() => commandLibrary.id, {
+    onDelete: 'cascade',
+  }),
+  /** A `Bun.cron` expression or named schedule (`@daily`). The registry arms it. */
+  cron: text('cron').notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull(),
+  createdAt: text('created_at').notNull(),
+  createdBy: text('created_by'),
+});
+
+/**
  * A lifecycle event an agent reported - it started, it stopped. Kept as a small
  * append-only log per host, so the console can show a machine coming and going
  * rather than leaving an operator to infer it from a gap between reports.
@@ -295,6 +327,7 @@ export type AgentMetricRow = typeof agentMetrics.$inferSelect;
 export type CommandLibraryRow = typeof commandLibrary.$inferSelect;
 export type AlertRuleRow = typeof alertRules.$inferSelect;
 export type AlertRow = typeof alerts.$inferSelect;
+export type ScheduledTaskRow = typeof scheduledTasks.$inferSelect;
 export type DiscoveredHostRow = typeof discoveredHosts.$inferSelect;
 export type FleetSettingRow = typeof fleetSettings.$inferSelect;
 export type UsedGrantRow = typeof usedGrants.$inferSelect;

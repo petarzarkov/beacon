@@ -10,6 +10,8 @@ import type {
   DiscoveryView,
   InventoryView,
   ReleaseManifest,
+  ScheduleAction,
+  ScheduledTaskView,
 } from '@beacon/contract';
 
 export type {
@@ -22,7 +24,18 @@ export type {
   CommandView,
   DiscoveryView,
   InventoryView,
+  ScheduledTaskView,
 };
+
+/** What a new scheduled task looks like from a test. */
+export interface NewScheduledTask {
+  readonly name: string;
+  readonly agentId?: string | null;
+  readonly action: ScheduleAction;
+  readonly probe?: DiagnoseProbe;
+  readonly libraryId?: string;
+  readonly cron: string;
+}
 
 /** What a new alert rule looks like from a test. */
 export interface NewAlertRule {
@@ -218,6 +231,36 @@ export class Operator {
     return this.#json('/api/agents/alert-webhook', {
       method: 'PUT',
       body: JSON.stringify({ url }),
+    });
+  }
+
+  schedules(): Promise<readonly ScheduledTaskView[]> {
+    return this.#json<readonly ScheduledTaskView[]>('/api/agents/schedules');
+  }
+
+  addSchedule(task: NewScheduledTask): Promise<ScheduledTaskView> {
+    return this.#json<ScheduledTaskView>('/api/agents/schedules', {
+      method: 'POST',
+      body: JSON.stringify(task),
+    });
+  }
+
+  runSchedule(id: string): Promise<{ ran: true }> {
+    return this.#json<{ ran: true }>(`/api/agents/schedules/${id}/run`, {
+      method: 'POST',
+    });
+  }
+
+  toggleSchedule(id: string, enabled: boolean): Promise<{ enabled: boolean }> {
+    return this.#json<{ enabled: boolean }>(`/api/agents/schedules/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ enabled }),
+    });
+  }
+
+  deleteSchedule(id: string): Promise<{ deleted: true }> {
+    return this.#json<{ deleted: true }>(`/api/agents/schedules/${id}`, {
+      method: 'DELETE',
     });
   }
 
