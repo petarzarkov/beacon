@@ -4,6 +4,7 @@ export type {
   AgentEventView,
   AgentMetricPoint,
   AgentView,
+  CommandLibraryEntry,
   CommandView,
   DiscoveryView,
 } from './operator.js';

@@ -23,6 +23,8 @@ export interface PanelOptions {
     | false;
   /** The initial state of the propagation kill switch. Defaults to paused. */
   readonly propagationAllowed?: boolean;
+  /** Enable free-form (Tier 2) command execution. Defaults to disabled. */
+  readonly allowArbitraryExec?: boolean;
 }
 
 export interface Panel {
@@ -88,6 +90,7 @@ export const startPanel = async (
     ),
     AGENT_COMMAND_TTL_MS: String(options.commandTtlMs ?? DEFAULTS.commandTtlMs),
     AGENT_PROPAGATION_ALLOWED: String(options.propagationAllowed ?? false),
+    ALLOW_ARBITRARY_EXEC: String(options.allowArbitraryExec ?? false),
     // Distinct per panel, so a grant minted by one is not honoured by another -
     // which is itself asserted in enrolment.e2e.ts.
     AUTH_SECRET: `e2e-secret-${crypto.randomUUID()}`,

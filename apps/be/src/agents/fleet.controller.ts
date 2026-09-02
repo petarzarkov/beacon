@@ -15,6 +15,7 @@ import type {
   AgentEventView,
   AgentMetricPoint,
   AgentView,
+  CommandLibraryEntry,
   CommandView,
   DiscoveryView,
   FleetSettings,
@@ -23,9 +24,13 @@ import type {
 import {
   agentEventsRoute,
   agentMetricsRoute,
+  createLibraryRoute,
   deployRoute,
   diagnoseRoute,
   discoverRoute,
+  execRawRoute,
+  execRoute,
+  libraryIdRoute,
   listCommandsRoute,
   oneAgentRoute,
   queueRoute,
@@ -113,7 +118,10 @@ export class FleetController {
   @ApiDoc({ summary: 'Fleet-wide settings (the propagation kill switch)' })
   @Get('/settings')
   settings(): FleetSettings {
-    return { propagationAllowed: this.agents.propagationAllowed() };
+    return {
+      propagationAllowed: this.agents.propagationAllowed(),
+      allowArbitraryExec: this.agents.allowArbitraryExec(),
+    };
   }
 
   /**
@@ -133,7 +141,33 @@ export class FleetController {
         input.body.propagationAllowed,
         this.#issuer(),
       ),
+      allowArbitraryExec: this.agents.allowArbitraryExec(),
     };
+  }
+
+  /**
+   * The command library (Tier 1). Any operator may read it and run an entry;
+   * only an admin may curate it - static segments, so declared before `/:id`.
+   */
+  @ApiDoc({ summary: 'The admin-curated library of runnable commands' })
+  @Get('/library')
+  library(): readonly CommandLibraryEntry[] {
+    return this.commands.listLibrary();
+  }
+
+  @Roles('admin')
+  @ApiDoc({ summary: 'Add a command to the library (admin)' })
+  @Post('/library', createLibraryRoute)
+  addLibrary(input: Input<typeof createLibraryRoute>): CommandLibraryEntry {
+    return this.commands.createLibraryEntry(input.body, this.#issuer());
+  }
+
+  @Roles('admin')
+  @ApiDoc({ summary: 'Remove a command from the library (admin)' })
+  @Delete('/library/:id', libraryIdRoute)
+  removeLibrary(input: Input<typeof libraryIdRoute>): { deleted: true } {
+    this.commands.deleteLibraryEntry(input.params.id);
+    return { deleted: true };
   }
 
   @ApiDoc({ summary: 'One agent' })
@@ -197,6 +231,33 @@ export class FleetController {
     return this.commands.queueDiagnose(
       input.params.id,
       input.body.probe,
+      this.#issuer(),
+    );
+  }
+
+  /** Tier 1: run a library command. Any operator; the allowlist is the library. */
+  @ApiDoc({ summary: 'Run a library command on an agent' })
+  @Post('/:id/exec', execRoute)
+  exec(input: Input<typeof execRoute>): CommandView {
+    return this.commands.queueExecLibrary(
+      input.params.id,
+      input.body.libraryId,
+      this.#issuer(),
+    );
+  }
+
+  /**
+   * Tier 2: run a free-form command. `@Roles('admin')` and the service also
+   * refuses unless `ALLOW_ARBITRARY_EXEC` is set - real remote execution, so two
+   * gates, not one.
+   */
+  @Roles('admin')
+  @ApiDoc({ summary: 'Run a free-form command on an agent (admin, gated)' })
+  @Post('/:id/exec-raw', execRawRoute)
+  execRaw(input: Input<typeof execRawRoute>): CommandView {
+    return this.commands.queueExecArbitrary(
+      input.params.id,
+      input.body.command,
       this.#issuer(),
     );
   }

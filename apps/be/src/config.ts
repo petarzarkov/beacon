@@ -106,6 +106,15 @@ const envSchema = z.object({
     .min(1)
     .max(720)
     .default(24),
+  /**
+   * Whether an admin may run a **free-form** command on an agent (Tier 2).
+   *
+   * Off by default, and deliberately: the curated command library (Tier 1) needs
+   * no flag because every entry was vetted by an admin, but arbitrary execution
+   * is real remote code execution on the fleet and should be a decision an
+   * operator turns on for a reason, not a capability that ships armed.
+   */
+  ALLOW_ARBITRARY_EXEC: z.stringbool().default(false),
 });
 
 export interface AppConfig {
@@ -132,6 +141,7 @@ export interface AppConfig {
     readonly commandTtlMs: number;
     readonly propagationAllowedDefault: boolean;
     readonly metricsRetentionMs: number;
+    readonly allowArbitraryExec: boolean;
   };
 }
 
@@ -201,6 +211,7 @@ export const validate = (env: ConfigSource): AppConfig => {
       commandTtlMs: value.AGENT_COMMAND_TTL_MS,
       propagationAllowedDefault: value.AGENT_PROPAGATION_ALLOWED,
       metricsRetentionMs: value.AGENT_METRICS_RETENTION_HOURS * 3_600_000,
+      allowArbitraryExec: value.ALLOW_ARBITRARY_EXEC,
     },
   };
 };

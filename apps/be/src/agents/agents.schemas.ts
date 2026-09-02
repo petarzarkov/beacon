@@ -226,6 +226,41 @@ export const diagnoseRoute = {
   body: z.object({ probe: z.enum(DIAGNOSE_PROBES) }),
 } as const;
 
+// --- Custom commands: the library (Tier 1) and exec (Tier 1 + Tier 2) ---------
+
+export const libraryEntry = z
+  .object({
+    name: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(
+        /^[a-zA-Z0-9._-]+$/,
+        'letters, digits, dot, dash, underscore only',
+      ),
+    description: z.string().max(280).optional(),
+    argv: z.array(z.string().min(1).max(4096)).min(1).max(64),
+  })
+  .meta({
+    id: 'CommandLibraryEntry',
+    description: 'A named, admin-curated command an operator can run',
+  });
+export const createLibraryRoute = { body: libraryEntry } as const;
+export const libraryIdRoute = {
+  params: z.object({ id: z.string().min(1).max(64) }),
+} as const;
+
+/** Tier 1: run a library entry by id (any operator). */
+export const execRoute = {
+  params: agentId,
+  body: z.object({ libraryId: z.string().min(1).max(64) }),
+} as const;
+/** Tier 2: run a free-form command (admin only, gated by ALLOW_ARBITRARY_EXEC). */
+export const execRawRoute = {
+  params: agentId,
+  body: z.object({ command: z.string().min(1).max(4096) }),
+} as const;
+
 export const fleetSettings = z
   .object({ propagationAllowed: z.boolean() })
   .meta({

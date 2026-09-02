@@ -125,9 +125,11 @@ path, every screen is a real URL that deep-links and survives a reload.
   Each row's host links to that agent's page.
 - **Agent detail** (`/agents/:id`) — one host in full: its own memory / CPU /
   uptime (not the machine's), **trend charts** of memory and CPU over a chosen
-  window, a **diagnostics** panel (run a read-only probe, read its output), its
-  **lifecycle activity** (startups and exits as a timeline), its command history,
-  and the controls.
+  window, a **run-command** panel (a curated library any operator can run, plus
+  free-form for an admin when enabled — admins curate the library here too), a
+  **diagnostics** panel (a read-only probe, its output), its **lifecycle
+  activity** (startups and exits as a timeline), its command history, and the
+  controls.
 - **Commands** (`/commands`) — open vs. recent history, each with its state and
   detail.
 - **Discovered** (`/discovered`) — swept hosts not yet managed, with a deployment
@@ -152,19 +154,21 @@ An in-process panel on an ephemeral port plus **real agent subprocesses** — th
 only way to test the things that matter: that `restart` really ends the process,
 that a fresh process reports a fresh uptime, that an identity on disk is found
 again by a different process, and that **self-update actually swaps the binary**
-and comes back on the new one. 53 tests across enrolment, the command lifecycle,
+and comes back on the new one. 57 tests across enrolment, the command lifecycle,
 releases, self-update (the real swap, the hash-mismatch refusal, the
 operator-driven queue), **lifecycle events** (a clean stop reports an exit, a kill
 reports none), **metrics history** (a point per report, oldest-first, real
 memory and CPU), **diagnostics** (a read-only probe runs and returns output, the
-allowlist is enforced), **propagation lineage** (a token-enrolled host is
-attributed to whoever swept its address, and spreaders report themselves),
-provisioning, the propagation kill switch, a multi-agent fleet with an offline
-host, and the console — both the panel serving the SPA and **the SPA itself
-driven in a real browser** (Playwright): the live fleet table, an agent's detail
-page (its trends, diagnostics, activity), the deep link resolving on reload, a
-command settling as an intent, and the lineage tree. Sign-in is only the way in,
-not the subject — Better Auth covers auth itself. `bun run test:e2e`.
+allowlist is enforced), **custom commands** (a Tier-1 library entry runs and a
+non-admin cannot curate it; Tier-2 free-form is refused unless enabled, then
+runs), **propagation lineage** (a token-enrolled host is attributed to whoever
+swept its address, and spreaders report themselves), provisioning, the
+propagation kill switch, a multi-agent fleet with an offline host, and the
+console — both the panel serving the SPA and **the SPA itself driven in a real
+browser** (Playwright): the live fleet table, an agent's detail page (its trends,
+run-command, diagnostics, activity), the deep link resolving on reload, a command
+settling as an intent, and the lineage tree. Sign-in is only the way in, not the
+subject — Better Auth covers auth itself. `bun run test:e2e`.
 
 The browser tests skip themselves where the console is unbuilt or no Chromium is
 installed (`bunx playwright install chromium`), so a bare checkout stays green; CI

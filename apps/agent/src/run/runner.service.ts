@@ -7,10 +7,12 @@ import type {
   DeployPayload,
   DiagnosePayload,
   DiscoverPayload,
+  ExecPayload,
 } from '@beacon/contract';
 import { IdentityStore } from '../config/identity.js';
 import { AgentConfigService } from '../config/settings.js';
 import { DiagnoseService } from '../diagnose/diagnose.service.js';
+import { ExecService } from '../exec/exec.service.js';
 import { PanelClient } from '../panel/panel-client.js';
 import { ProbeService } from '../probe/probe.service.js';
 import { DeployService } from '../provision/deploy.service.js';
@@ -51,6 +53,7 @@ export class RunnerService {
     private readonly deployments: DeployService,
     private readonly propagation: PropagateService,
     private readonly diagnostics: DiagnoseService,
+    private readonly exec: ExecService,
     private readonly logger: Logger,
   ) {}
 
@@ -254,6 +257,12 @@ export class RunnerService {
         if (command.payload === null)
           throw new Error('diagnose command has no payload');
         return this.diagnostics.run((command.payload as DiagnosePayload).probe);
+      }
+
+      case 'exec': {
+        if (command.payload === null)
+          throw new Error('exec command has no payload');
+        return this.exec.run((command.payload as ExecPayload).argv);
       }
 
       // Handled by the caller, which sends outcomes before the process dies.

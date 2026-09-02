@@ -3,12 +3,14 @@ import type {
   AgentEventRow,
   AgentMetricRow,
   AgentRow,
+  CommandLibraryRow,
   DiscoveredHostRow,
 } from './agents.repository.js';
 import type {
   AgentEventView,
   AgentMetricPoint,
   AgentView,
+  CommandLibraryEntry,
   CommandView,
   DiscoveryView,
 } from '@beacon/contract';
@@ -75,6 +77,19 @@ export const toCommandView = (row: AgentCommandRow): CommandView => ({
   settledAt: row.settledAt,
   detail: row.detail,
   issuedBy: row.issuedBy,
+  label: row.label ?? null,
+});
+
+/** The argv is safe to show for a library entry (unlike a deploy credential). */
+export const toLibraryEntryView = (
+  row: CommandLibraryRow,
+): CommandLibraryEntry => ({
+  id: row.id,
+  name: row.name,
+  description: row.description,
+  argv: row.argv,
+  createdBy: row.createdBy,
+  createdAt: row.createdAt,
 });
 
 export const toAgentEventView = (row: AgentEventRow): AgentEventView => ({

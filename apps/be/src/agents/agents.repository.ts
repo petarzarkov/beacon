@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- this is by design the one file that holds every SQL
+   statement for the agents feature (see AGENTS.md); it grows with the feature. */
 import { SyncDatabase } from '@dunx/infra/db';
 import { and, count, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 import * as schema from '../database/schema.js';
@@ -7,6 +9,7 @@ import {
   agentEvents,
   agentMetrics,
   agents,
+  commandLibrary,
   discoveredHosts,
   fleetSettings,
   usedGrants,
@@ -14,6 +17,7 @@ import {
   type AgentEventRow,
   type AgentMetricRow,
   type AgentRow,
+  type CommandLibraryRow,
   type DiscoveredHostRow,
 } from './agents.schema.js';
 
@@ -22,6 +26,7 @@ export type {
   AgentEventRow,
   AgentMetricRow,
   AgentRow,
+  CommandLibraryRow,
   DiscoveredHostRow,
 };
 
@@ -78,7 +83,22 @@ export class AgentsRepository {
       delivered_at TEXT,
       settled_at TEXT,
       detail TEXT,
-      issued_by TEXT
+      issued_by TEXT,
+      label TEXT
+    )`);
+    // Additive: `label` was added with the `exec` command. No-op on a fresh DB.
+    try {
+      this.db.run(sql`ALTER TABLE agent_commands ADD COLUMN label TEXT`);
+    } catch {
+      /* already present */
+    }
+    this.db.run(sql`CREATE TABLE IF NOT EXISTS command_library (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      description TEXT,
+      argv TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      created_by TEXT
     )`);
     this.db.run(sql`CREATE TABLE IF NOT EXISTS agent_events (
       id TEXT PRIMARY KEY,
@@ -309,6 +329,40 @@ export class AgentsRepository {
 
   queue(row: AgentCommandRow): void {
     this.db.insert(agentCommands).values(row).run();
+  }
+
+  // --- The command library (Tier 1) ------------------------------------------
+
+  listLibrary(): readonly CommandLibraryRow[] {
+    return this.db
+      .select()
+      .from(commandLibrary)
+      .orderBy(commandLibrary.name)
+      .all();
+  }
+
+  findLibrary(id: string): CommandLibraryRow | null {
+    return (
+      this.db
+        .select()
+        .from(commandLibrary)
+        .where(eq(commandLibrary.id, id))
+        .get() ?? null
+    );
+  }
+
+  createLibraryEntry(row: CommandLibraryRow): void {
+    this.db.insert(commandLibrary).values(row).run();
+  }
+
+  deleteLibraryEntry(id: string): boolean {
+    return (
+      this.db
+        .delete(commandLibrary)
+        .where(eq(commandLibrary.id, id))
+        .returning()
+        .all().length > 0
+    );
   }
 
   findCommand(id: string): AgentCommandRow | null {

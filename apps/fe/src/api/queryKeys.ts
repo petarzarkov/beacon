@@ -10,4 +10,5 @@ export const keys = {
   discovered: ['discovered'] as const,
   release: ['release'] as const,
   settings: ['settings'] as const,
+  library: ['library'] as const,
 };

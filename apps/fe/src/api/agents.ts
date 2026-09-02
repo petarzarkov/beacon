@@ -8,6 +8,7 @@ import type {
   AgentEventView,
   AgentMetricPoint,
   AgentView,
+  CommandLibraryEntry,
   CommandView,
   DiagnoseProbe,
   DiscoveryView,
@@ -21,6 +22,7 @@ export type {
   AgentEventView,
   AgentMetricPoint,
   AgentView,
+  CommandLibraryEntry,
   CommandView,
   DiscoveryView,
   FleetSettings,
@@ -151,6 +153,56 @@ export const useDiagnose = () => {
   return useMutation({
     mutationFn: ({ id, probe }: { id: string; probe: DiagnoseProbe }) =>
       http.post<CommandView>(`/api/agents/${id}/diagnose`, { probe }),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.commands }),
+  });
+};
+
+/** The admin-curated command library (Tier 1). Any operator may read it. */
+export const useCommandLibrary = (): UseQueryResult<
+  readonly CommandLibraryEntry[]
+> =>
+  useQuery({
+    queryKey: keys.library,
+    queryFn: () =>
+      http.get<readonly CommandLibraryEntry[]>('/api/agents/library'),
+  });
+
+export const useAddLibraryEntry = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (entry: {
+      name: string;
+      description?: string;
+      argv: string[];
+    }) => http.post<CommandLibraryEntry>('/api/agents/library', entry),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.library }),
+  });
+};
+
+export const useDeleteLibraryEntry = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => http.del(`/api/agents/library/${id}`),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.library }),
+  });
+};
+
+/** Tier 1: run a library command by id on an agent. */
+export const useRunLibrary = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, libraryId }: { id: string; libraryId: string }) =>
+      http.post<CommandView>(`/api/agents/${id}/exec`, { libraryId }),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.commands }),
+  });
+};
+
+/** Tier 2: run a free-form command on an agent (admin, gated). */
+export const useRunArbitrary = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, command }: { id: string; command: string }) =>
+      http.post<CommandView>(`/api/agents/${id}/exec-raw`, { command }),
     onSuccess: () => client.invalidateQueries({ queryKey: keys.commands }),
   });
 };

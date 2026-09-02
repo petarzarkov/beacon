@@ -10,17 +10,23 @@ import type {
   DiagnosePayload,
   DiagnoseProbe,
   DiscoverPayload,
+  ExecPayload,
   HostReport,
 } from '@beacon/contract';
 import { AgentsRepository, type AgentRow } from './agents.repository.js';
-import type { CommandView } from '@beacon/contract';
-import type { deployRoute, discoverRoute } from './agents.schemas.js';
-import { toCommandView } from './agents.views.js';
+import type { CommandLibraryEntry, CommandView } from '@beacon/contract';
+import type {
+  deployRoute,
+  discoverRoute,
+  libraryEntry,
+} from './agents.schemas.js';
+import { toCommandView, toLibraryEntryView } from './agents.views.js';
 import { mintGrant } from './enrolment.js';
 import { ReleasesService } from './releases.service.js';
 
 type DeployRequest = z.infer<(typeof deployRoute)['body']>;
 type DiscoverRequest = z.infer<(typeof discoverRoute)['body']>;
+type LibraryEntryInput = z.infer<typeof libraryEntry>;
 
 /**
  * The command lifecycle, which is the whole of "control" here.
@@ -53,8 +59,14 @@ export class CommandsService {
     agentId: string,
     command: AgentCommandName,
     issuedBy: string | null,
-    payload: DeployPayload | DiscoverPayload | DiagnosePayload | null,
+    payload:
+      | DeployPayload
+      | DiscoverPayload
+      | DiagnosePayload
+      | ExecPayload
+      | null,
     ttlMs: number = this.#ttlMs(),
+    label: string | null = null,
   ): CommandView {
     const now = new Date();
     const row = {
@@ -69,6 +81,7 @@ export class CommandsService {
       settledAt: null,
       detail: null,
       issuedBy,
+      label,
     };
     this.repo.queue(row);
     this.logger.info('command queued', { agentId, command, id: row.id });
@@ -113,6 +126,108 @@ export class CommandsService {
     this.#requireAgent(agentId);
     const payload: DiagnosePayload = { probe };
     return this.#queue(agentId, 'diagnose', issuedBy, payload);
+  }
+
+  // --- Custom commands -------------------------------------------------------
+
+  /** The command library operators can choose from (Tier 1). */
+  listLibrary(): readonly CommandLibraryEntry[] {
+    return this.repo.listLibrary().map(toLibraryEntryView);
+  }
+
+  /** Add a named command to the library. Admin-gated at the route. */
+  createLibraryEntry(
+    input: LibraryEntryInput,
+    createdBy: string | null,
+  ): CommandLibraryEntry {
+    const row = {
+      id: crypto.randomUUID(),
+      name: input.name,
+      description: input.description ?? null,
+      argv: [...input.argv],
+      createdAt: new Date().toISOString(),
+      createdBy,
+    };
+    try {
+      this.repo.createLibraryEntry(row);
+    } catch {
+      // The only constraint is the unique name.
+      throw new HttpError(
+        HttpStatusCode.CONFLICT,
+        `A command named "${input.name}" already exists`,
+      );
+    }
+    this.logger.info('library command added', {
+      name: row.name,
+      by: createdBy,
+    });
+    return toLibraryEntryView(row);
+  }
+
+  deleteLibraryEntry(id: string): void {
+    if (!this.repo.deleteLibraryEntry(id)) {
+      throw new HttpError(HttpStatusCode.NOT_FOUND, `No library command ${id}`);
+    }
+  }
+
+  /**
+   * Tier 1: queue a library command by id. Any operator may run one - the
+   * allowlist is the library itself, curated by an admin, and the agent receives
+   * a resolved argv it never had to look up.
+   */
+  queueExecLibrary(
+    agentId: string,
+    libraryId: string,
+    issuedBy: string | null,
+  ): CommandView {
+    this.#requireAgent(agentId);
+    const entry = this.repo.findLibrary(libraryId);
+    if (entry === null) {
+      throw new HttpError(
+        HttpStatusCode.NOT_FOUND,
+        `No library command ${libraryId}`,
+      );
+    }
+    const payload: ExecPayload = { argv: entry.argv, label: entry.name };
+    return this.#queue(
+      agentId,
+      'exec',
+      issuedBy,
+      payload,
+      this.#ttlMs(),
+      entry.name,
+    );
+  }
+
+  /**
+   * Tier 2: queue a free-form command. Gated: refused unless the panel is
+   * configured to allow it (the route also requires the admin role). Run through
+   * `sh -c` on the agent, as its unprivileged service user.
+   */
+  queueExecArbitrary(
+    agentId: string,
+    command: string,
+    issuedBy: string | null,
+  ): CommandView {
+    if (!this.config.get('agents').allowArbitraryExec) {
+      throw new HttpError(
+        HttpStatusCode.FORBIDDEN,
+        'Arbitrary command execution is disabled. Set ALLOW_ARBITRARY_EXEC=true to enable it.',
+      );
+    }
+    this.#requireAgent(agentId);
+    const payload: ExecPayload = {
+      argv: ['sh', '-c', command],
+      label: command,
+    };
+    return this.#queue(
+      agentId,
+      'exec',
+      issuedBy,
+      payload,
+      this.#ttlMs(),
+      command,
+    );
   }
 
   /**

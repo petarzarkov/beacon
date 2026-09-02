@@ -107,6 +107,7 @@ export const AGENT_COMMANDS = [
   'discover',
   'deploy',
   'diagnose',
+  'exec',
 ] as const;
 
 export type AgentCommandName = (typeof AGENT_COMMANDS)[number];
@@ -127,6 +128,36 @@ export const DIAGNOSE_PROBES = [
 ] as const;
 
 export type DiagnoseProbe = (typeof DIAGNOSE_PROBES)[number];
+
+/**
+ * The payload of an `exec` command: the exact argv the agent runs, and a human
+ * label for the console and the audit trail.
+ *
+ * Two tiers reach this, both server-side (the agent only ever receives a resolved
+ * argv, never a name to look up or a string to parse):
+ *
+ * - **Tier 1** - an operator picks a named entry from the admin-curated command
+ *   library; the panel resolves it to this argv. An allowlist any operator may run.
+ * - **Tier 2** - an admin submits a free-form command (run as `sh -c`), gated by
+ *   a config flag and `admin` role. Real arbitrary execution, off by default.
+ *
+ * The agent runs it as its own unprivileged service user, so what it can do is
+ * bounded by that user - not root.
+ */
+export interface ExecPayload {
+  readonly argv: readonly string[];
+  readonly label: string;
+}
+
+/** One entry in the admin-curated command library operators can run. */
+export interface CommandLibraryEntry {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string | null;
+  readonly argv: readonly string[];
+  readonly createdBy: string | null;
+  readonly createdAt: string;
+}
 
 /** The payload of a `diagnose` command: which read-only probe to run. */
 export interface DiagnosePayload {
@@ -195,7 +226,12 @@ export interface DiscoverPayload {
 export interface CommandEnvelope {
   readonly id: string;
   readonly command: AgentCommandName;
-  readonly payload: DeployPayload | DiscoverPayload | DiagnosePayload | null;
+  readonly payload:
+    | DeployPayload
+    | DiscoverPayload
+    | DiagnosePayload
+    | ExecPayload
+    | null;
 }
 
 /** The answer to a report: the cadence to keep, and anything queued. */
@@ -340,6 +376,8 @@ export interface CommandView {
   readonly settledAt: string | null;
   readonly detail: string | null;
   readonly issuedBy: string | null;
+  /** For an `exec`, what was run (the library name or the command). Null otherwise. */
+  readonly label: string | null;
 }
 
 /** A host on a managed subnet that is not managed yet. */
@@ -356,4 +394,6 @@ export interface DiscoveryView {
 export interface FleetSettings {
   /** The panel's half of the propagation kill switch. See `ReportResponse`. */
   readonly propagationAllowed: boolean;
+  /** Whether free-form (Tier 2) command execution is enabled on this panel. */
+  readonly allowArbitraryExec: boolean;
 }

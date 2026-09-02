@@ -47,7 +47,10 @@ describe('the propagation kill switch', () => {
 
       const operator = await panel.operator();
       const settings = await operator.fetch('/api/agents/settings');
-      expect(await settings.json()).toEqual({ propagationAllowed: false });
+      expect(await settings.json()).toEqual({
+        propagationAllowed: false,
+        allowArbitraryExec: false,
+      });
     } finally {
       await agent.dispose();
     }
@@ -97,6 +100,9 @@ describe('the propagation kill switch', () => {
 
     // And it really did not change - a plain user can still read it.
     const settings = await user.fetch('/api/agents/settings');
-    expect(await settings.json()).toEqual({ propagationAllowed: false });
+    expect(await settings.json()).toEqual({
+      propagationAllowed: false,
+      allowArbitraryExec: false,
+    });
   });
 });

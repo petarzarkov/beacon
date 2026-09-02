@@ -2,6 +2,7 @@ import type {
   AgentEventView,
   AgentMetricPoint,
   AgentView,
+  CommandLibraryEntry,
   CommandView,
   DiagnoseProbe,
   DiscoveryView,
@@ -12,6 +13,7 @@ export type {
   AgentEventView,
   AgentMetricPoint,
   AgentView,
+  CommandLibraryEntry,
   CommandView,
   DiscoveryView,
 };
@@ -137,6 +139,35 @@ export class Operator {
     return this.#json<CommandView>(`/api/agents/${agentId}/diagnose`, {
       method: 'POST',
       body: JSON.stringify({ probe }),
+    });
+  }
+
+  library(): Promise<readonly CommandLibraryEntry[]> {
+    return this.#json<readonly CommandLibraryEntry[]>('/api/agents/library');
+  }
+
+  addLibrary(entry: {
+    name: string;
+    description?: string;
+    argv: string[];
+  }): Promise<CommandLibraryEntry> {
+    return this.#json<CommandLibraryEntry>('/api/agents/library', {
+      method: 'POST',
+      body: JSON.stringify(entry),
+    });
+  }
+
+  runLibrary(agentId: string, libraryId: string): Promise<CommandView> {
+    return this.#json<CommandView>(`/api/agents/${agentId}/exec`, {
+      method: 'POST',
+      body: JSON.stringify({ libraryId }),
+    });
+  }
+
+  runArbitrary(agentId: string, command: string): Promise<CommandView> {
+    return this.#json<CommandView>(`/api/agents/${agentId}/exec-raw`, {
+      method: 'POST',
+      body: JSON.stringify({ command }),
     });
   }
 

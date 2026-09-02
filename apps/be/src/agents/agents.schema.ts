@@ -12,6 +12,7 @@ import type {
   DeployPayload,
   DiagnosePayload,
   DiscoverPayload,
+  ExecPayload,
   HostReport,
 } from '@beacon/contract';
 
@@ -82,9 +83,9 @@ export const agentCommands = sqliteTable(
       .references(() => agents.id, { onDelete: 'cascade' }),
     command: text('command').$type<AgentCommandName>().notNull(),
     state: text('state').$type<CommandState>().notNull(),
-    /** `deploy`, `discover` and `diagnose` carry one; the rest are the whole instruction. */
+    /** `deploy`, `discover`, `diagnose` and `exec` carry one; the rest are the whole instruction. */
     payload: text('payload', { mode: 'json' }).$type<
-      DeployPayload | DiscoverPayload | DiagnosePayload
+      DeployPayload | DiscoverPayload | DiagnosePayload | ExecPayload
     >(),
     queuedAt: text('queued_at').notNull(),
     /** Past this it is never delivered. An agent dark for a week must not come back to a restart. */
@@ -95,9 +96,29 @@ export const agentCommands = sqliteTable(
     detail: text('detail'),
     /** The operator's user id. A queued restart is worth attributing. */
     issuedBy: text('issued_by'),
+    /** For an `exec`, a human label of what ran (safe to show; payload is not). */
+    label: text('label'),
   },
   (table) => [index('agent_commands_open').on(table.agentId, table.state)],
 );
+
+/**
+ * The admin-curated library of named commands an operator can run on an agent.
+ *
+ * Tier 1 of custom commands: an operator picks an entry, the panel resolves it to
+ * its argv and queues an `exec`. The allowlist lives here rather than on the
+ * agent, so it can be curated centrally and an operator never submits raw argv.
+ */
+export const commandLibrary = sqliteTable('command_library', {
+  id: text('id').primaryKey(),
+  /** A short unique name shown in the console (e.g. `restart-nginx`). */
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  /** The exact argv the agent runs. JSON array of strings. */
+  argv: text('argv', { mode: 'json' }).$type<string[]>().notNull(),
+  createdAt: text('created_at').notNull(),
+  createdBy: text('created_by'),
+});
 
 /**
  * A lifecycle event an agent reported - it started, it stopped. Kept as a small
@@ -204,6 +225,7 @@ export type AgentRow = typeof agents.$inferSelect;
 export type AgentCommandRow = typeof agentCommands.$inferSelect;
 export type AgentEventRow = typeof agentEvents.$inferSelect;
 export type AgentMetricRow = typeof agentMetrics.$inferSelect;
+export type CommandLibraryRow = typeof commandLibrary.$inferSelect;
 export type DiscoveredHostRow = typeof discoveredHosts.$inferSelect;
 export type FleetSettingRow = typeof fleetSettings.$inferSelect;
 export type UsedGrantRow = typeof usedGrants.$inferSelect;

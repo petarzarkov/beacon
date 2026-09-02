@@ -260,6 +260,11 @@ export class AgentsService implements OnInit {
       : stored === 'true';
   }
 
+  /** Whether free-form command execution is enabled (config, not runtime). */
+  allowArbitraryExec(): boolean {
+    return this.config.get('agents').allowArbitraryExec;
+  }
+
   /**
    * Arm or pause fleet-wide propagation, live. Stored, so it survives a restart
    * and overrides the config seed from then on. Logged loudly - arming autonomous
